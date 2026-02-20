@@ -9,12 +9,17 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
-from app.dependencies import CurrentUser, DbSession
+from app.dependencies import DbSession, RequireEmail
 from app.middleware.rate_limiter import WriteRateLimit
+from app.models.tag import Tag, trace_tags
 from app.models.trace import Trace
 from app.models.vote import Vote
 from app.schemas.vote import VoteCreate, VoteResponse
-from app.services.trust import apply_vote_to_trace
+from app.services.trust import (
+    apply_vote_to_trace,
+    get_vote_weight_for_trace,
+    update_contributor_domain_reputation,
+)
 
 router = APIRouter(prefix="/api/v1", tags=["votes"])
 
@@ -27,7 +32,7 @@ router = APIRouter(prefix="/api/v1", tags=["votes"])
 async def cast_vote(
     trace_id: uuid.UUID,
     body: VoteCreate,
-    user: CurrentUser,
+    user: RequireEmail,
     db: DbSession,
     _rate: WriteRateLimit,
 ) -> VoteResponse:
@@ -48,6 +53,14 @@ async def cast_vote(
     trace = result.scalar_one_or_none()
     if trace is None:
         raise HTTPException(status_code=404, detail="Trace not found")
+
+    # Fetch trace tags for domain reputation lookup
+    tag_result = await db.execute(
+        select(Tag.name)
+        .join(trace_tags, Tag.id == trace_tags.c.tag_id)
+        .where(trace_tags.c.trace_id == trace_id)
+    )
+    tag_names = [row[0] for row in tag_result.fetchall()]
 
     # Prevent self-vote
     if trace.contributor_id == user.id:
@@ -80,11 +93,24 @@ async def cast_vote(
             )
         raise
 
+    # Domain-aware vote weight — uses voter's reputation in trace's domains
+    vote_weight = await get_vote_weight_for_trace(
+        db=db, voter_id=user.id, trace_tags=tag_names,
+    )
+
     # Apply vote to trace trust score — atomic column-expression UPDATE
     await apply_vote_to_trace(
         db=db,
         trace_id=trace_id,
-        vote_weight=user.reputation_score if user.reputation_score > 0 else 1.0,
+        vote_weight=vote_weight,
+        is_upvote=(body.vote_type == "up"),
+    )
+
+    # Update trace contributor's per-domain reputation
+    await update_contributor_domain_reputation(
+        db=db,
+        contributor_id=trace.contributor_id,
+        domain_tags=tag_names,
         is_upvote=(body.vote_type == "up"),
     )
 

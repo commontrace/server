@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import insert, select
 from sqlalchemy.orm import selectinload
 
-from app.dependencies import CurrentUser, DbSession
+from app.dependencies import CurrentUser, DbSession, RequireEmail
 from app.middleware.rate_limiter import ReadRateLimit, WriteRateLimit
 from app.models.tag import Tag, trace_tags
 from app.models.trace import Trace
@@ -25,7 +25,7 @@ router = APIRouter(prefix="/api/v1", tags=["traces"])
 @router.post("/traces", response_model=TraceAccepted, status_code=202)
 async def submit_trace(
     body: TraceCreate,
-    user: CurrentUser,
+    user: RequireEmail,
     db: DbSession,
     _rate: WriteRateLimit,
 ) -> TraceAccepted:

@@ -8,7 +8,7 @@ import uuid
 from fastapi import APIRouter, HTTPException
 from sqlalchemy import select
 
-from app.dependencies import CurrentUser, DbSession
+from app.dependencies import CurrentUser, DbSession, RequireEmail
 from app.middleware.rate_limiter import WriteRateLimit
 from app.models.amendment import Amendment
 from app.models.trace import Trace
@@ -26,7 +26,7 @@ router = APIRouter(prefix="/api/v1", tags=["amendments"])
 async def submit_amendment(
     trace_id: uuid.UUID,
     body: AmendmentCreate,
-    user: CurrentUser,
+    user: RequireEmail,
     db: DbSession,
     _rate: WriteRateLimit,
 ) -> AmendmentResponse:
