@@ -4,7 +4,7 @@ import redis.asyncio as aioredis
 from fastapi import FastAPI
 
 from app.config import settings
-from app.routers import amendments, auth, moderation, traces, votes
+from app.routers import amendments, auth, moderation, search, traces, votes
 
 
 @asynccontextmanager
@@ -30,6 +30,9 @@ app.include_router(amendments.router)
 
 # Moderation router (02-04)
 app.include_router(moderation.router)
+
+# Search router (03-02)
+app.include_router(search.router)
 
 
 @app.get("/health")
