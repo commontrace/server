@@ -5,30 +5,30 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
-**Current focus:** Phase 2, Plans 01 and 02 complete — PII scanner, staleness checker, trust service, and all Pydantic schemas ready for endpoint wiring
+**Current focus:** Phase 2, Plans 01, 02, and 03 complete — all write-path HTTP endpoints wired with auth, rate limiting, and PII scanning
 
 ## Current Position
 
 Phase: 2 of 7 (Core API) — IN PROGRESS
-Plan: 2 of 4 in current phase — complete
-Status: Plan 02-02 complete (2 tasks, 2 commits, all must-haves verified)
-Last activity: 2026-02-20 — Plan 02-02 executed and committed
+Plan: 3 of 4 in current phase — complete
+Status: Plan 02-03 complete (2 tasks, 2 commits, all write-path endpoints wired)
+Last activity: 2026-02-20 — Plan 02-03 executed and committed
 
-Progress: [████░░░░░░] 28%
+Progress: [█████░░░░░] 36%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 5
+- Total plans completed: 6
 - Average duration: ~4 min
-- Total execution time: ~21 min
+- Total execution time: ~29 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-data-foundation | 3 | 14 min | ~5 min |
-| 02-core-api | 2 | 7 min | ~3.5 min |
+| 02-core-api | 3 | 15 min | ~5 min |
 
 **Recent Trend:**
 - Last 5 plans: 3 min, 8 min, 3 min, 4 min
@@ -67,6 +67,10 @@ Recent decisions affecting current work:
 - [02-02]: Staleness comparison is major.minor only — patch releases backwards-compatible and don't invalidate trace advice
 - [02-02]: apply_vote_to_trace uses atomic column-expression UPDATE then separate SELECT for promotion check — safe under one-vote-per-trace unique DB constraint
 - [02-02]: VoteResponse.feedback_tag Optional[str]=None even though Vote model stores this in context_json — endpoint layer (02-03) handles the mapping
+- [02-03]: vote_weight = max(user.reputation_score, 1.0) for new users — prevents zero-weight votes while reputation engine ships in Phase 4
+- [02-03]: Direct insert into trace_tags join table (not relationship.append) — consistent with seed fixture pattern, avoids MissingGreenlet in async context
+- [02-03]: feedback_tag stored in Vote.context_json, deserialized at endpoint layer — VoteResponse.feedback_tag populated without ORM schema change
+- [02-03]: ORM model Trace was missing is_stale, is_flagged, flagged_at columns despite migration 0002 adding them — added to model (Rule 1 auto-fix)
 
 ### Pending Todos
 
@@ -81,5 +85,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Plan 02-02 complete — scanner.py, staleness.py, trust.py, and all Pydantic schemas ready for 02-03 endpoint wiring
+Stopped at: Plan 02-03 complete — all write-path HTTP endpoints wired (auth, traces, votes, amendments); routers registered in main.py; ready for 02-04 moderation (parallel) or Phase 3
 Resume file: None
