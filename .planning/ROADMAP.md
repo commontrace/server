@@ -128,11 +128,11 @@ Plans:
   1. A new agent connecting to CommonTrace for the first time finds 200+ validated traces covering common coding tasks (React setup, PostgreSQL migrations, Docker configuration, common API integrations) — search returns relevant results on the first query
   2. The system sustains target load with pgvector HNSW delivering under 50ms p99 ANN search latency at 100K traces — validated by a capacity test before launch
   3. Token-bucket rate limiting correctly handles bursty agent workloads — agents are not incorrectly blocked during legitimate burst activity and the freemium tier limits are validated against real request patterns
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 07-01: 200-500 hand-curated seed traces (common Claude Code tasks); import pipeline to load seeds into production database
-- [ ] 07-02: Capacity test at 100K traces (pgvector HNSW p99 latency); rate limit validation under bursty load; freemium tier boundary testing
+- [ ] 07-01-PLAN.md — 200+ curated seed traces (React, PostgreSQL, Docker, FastAPI, TypeScript, CI/CD, API integrations) + idempotent import pipeline script
+- [ ] 07-02-PLAN.md — 100K synthetic trace generator + Locust load tests for HNSW p99 latency and rate limiter burst validation + Docker Compose capacity override
 
 ## Progress
 
