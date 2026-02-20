@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
-**Current focus:** Phase 6 in progress — Claude Code skill layer (plan 1 of 3 complete)
+**Current focus:** Phase 6 in progress — Claude Code skill layer (plan 2 of 3 complete)
 
 ## Current Position
 
 Phase: 6 of 7 (Claude Code Skill) — IN PROGRESS
-Plan: 1 of 3 in current phase — plan 1 complete (plugin shell)
-Status: Phase 06 plan 1 complete; ready for plan 2 (hooks)
-Last activity: 2026-02-20 — Phase 6 Plan 1 complete (plugin manifest, MCP auto-config, slash commands, SKILL.md)
+Plan: 2 of 3 in current phase — plan 2 complete (SessionStart + Stop hooks)
+Status: Phase 06 plan 2 complete; ready for plan 3 (packaging and install docs)
+Last activity: 2026-02-20 — Phase 6 Plan 2 complete (hooks.json, session_start.py, stop.py)
 
-Progress: [████████░░] 74%
+Progress: [████████░░] 76%
 
 ## Performance Metrics
 
@@ -32,7 +32,7 @@ Progress: [████████░░] 74%
 | 03-search-discovery | 3/3 | 6 min | ~2 min |
 | 04-reputation-engine | 2/3 | 11 min | ~5.5 min |
 | 05-mcp-server | 2/2 | 11 min | ~5.5 min |
-| 06-claude-code-skill | 1/3 | 2 min | ~2 min |
+| 06-claude-code-skill | 2/3 | 4 min | ~2 min |
 
 **Recent Trend:**
 - Last 5 plans: 3 min, 3 min, 8 min, 3 min, 2 min
@@ -101,6 +101,10 @@ Recent decisions affecting current work:
 - [Phase 06-01]: Plugin name and .mcp.json server key both 'commontrace' — consistency required for correct MCP tool prefix mcp__plugin_commontrace_commontrace__*
 - [Phase 06-01]: HTTP transport in .mcp.json targeting deployed MCP server on port 8080 — no stdio; COMMONTRACE_API_KEY has no default (API keys require explicit env var)
 - [Phase 06-01]: /trace:contribute enforces preview-then-confirm flow — no trace submits without explicit yes (SKIL-04 requirement)
+- [Phase 06-02]: SessionStart hook uses direct HTTP (urllib.request) not MCP — hooks are shell commands, MCP tools unavailable from subprocess context
+- [Phase 06-02]: matcher=startup on SessionStart — prevents re-injection on resume/clear/compact
+- [Phase 06-02]: Stop hook uses stop_hook_active (within-cycle) + flag file at /tmp/commontrace-prompted-{session_key} (cross-response) for dual loop prevention
+- [Phase 06-02]: Session key uses session_id from payload or os.getppid() fallback — never os.getpid() (new PID per invocation)
 
 ### Pending Todos
 
@@ -114,5 +118,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 06-01-PLAN.md — Claude Code plugin shell with MCP auto-config, /trace:search, /trace:contribute, SKILL.md
+Stopped at: Completed 06-02-PLAN.md — SessionStart auto-query hook + Stop contribution-prompt hook with loop prevention
 Resume file: None
