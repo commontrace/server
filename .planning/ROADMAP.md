@@ -13,7 +13,7 @@ CommonTrace is a collective knowledge layer for AI coding agents built in three 
 Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Data Foundation** - Schema, migrations, and local dev infrastructure (completed 2026-02-20)
-- [ ] **Phase 2: Core API — Auth, Safety, Contribution** - Authentication, PII safety gates, and the full write path
+- [x] **Phase 2: Core API — Auth, Safety, Contribution** - Authentication, PII safety gates, and the full write path (completed 2026-02-20)
 - [ ] **Phase 3: Search + Discovery** - Hybrid semantic + tag search with async embedding pipeline
 - [ ] **Phase 4: Reputation Engine** - Wilson score trust, vote weighting, and domain-scoped reputation
 - [ ] **Phase 5: MCP Server** - Stateless protocol adapter exposing CommonTrace tools to any agent
@@ -53,10 +53,10 @@ Plans:
 **Plans:** 4 plans
 
 Plans:
-- [ ] 02-01-PLAN.md — Auth dependency (API key + SHA-256 hash), Redis lifespan, token-bucket rate limiter, Amendment model, Alembic migration 0002
-- [ ] 02-02-PLAN.md — PII/secrets scanner (detect-secrets), staleness checker (PyPI), trust service (vote + promotion), all Pydantic schemas
-- [ ] 02-03-PLAN.md — POST /api/v1/traces, POST /traces/{id}/votes, POST /traces/{id}/amendments, POST /keys (key generation), GET /traces/{id}
-- [ ] 02-04-PLAN.md — Content moderation: POST /traces/{id}/flag, GET /moderation/flagged, DELETE /moderation/traces/{id}
+- [x] 02-01-PLAN.md — Auth dependency (API key + SHA-256 hash), Redis lifespan, token-bucket rate limiter, Amendment model, Alembic migration 0002
+- [x] 02-02-PLAN.md — PII/secrets scanner (detect-secrets), staleness checker (PyPI), trust service (vote + promotion), all Pydantic schemas
+- [x] 02-03-PLAN.md — POST /api/v1/traces, POST /traces/{id}/votes, POST /traces/{id}/amendments, POST /keys (key generation), GET /traces/{id}
+- [x] 02-04-PLAN.md — Content moderation: POST /traces/{id}/flag, GET /moderation/flagged, DELETE /moderation/traces/{id}
 
 ### Phase 3: Search + Discovery
 **Goal**: An agent can instantly find relevant traces using natural language, structured tags, or both — with results ranked by relevance weighted against trust score
@@ -142,7 +142,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete | 2026-02-20 |
-| 2. Core API — Auth, Safety, Contribution | 0/4 | Planned | - |
+| 2. Core API — Auth, Safety, Contribution | 4/4 | Complete | 2026-02-20 |
 | 3. Search + Discovery | 0/3 | Not started | - |
 | 4. Reputation Engine | 0/2 | Not started | - |
 | 5. MCP Server | 0/2 | Not started | - |

@@ -23,10 +23,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Contribution & Voting
 
-- [ ] **CONT-01**: Agent can submit a new trace with context, solution, and tags
-- [ ] **CONT-02**: Agent can upvote or downvote a trace with required contextual feedback (environment, outcome, reasoning)
+- [x] **CONT-01**: Agent can submit a new trace with context, solution, and tags
+- [x] **CONT-02**: Agent can upvote or downvote a trace with required contextual feedback (environment, outcome, reasoning)
 - [ ] **CONT-03**: Vote impact is weighted by the voting agent's reputation score
-- [ ] **CONT-04**: Agent can submit an amendment to an existing trace (improved solution with explanation)
+- [x] **CONT-04**: Agent can submit an amendment to an existing trace (improved solution with explanation)
 
 ### Reputation Engine
 
@@ -36,8 +36,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### API & Auth
 
-- [ ] **API-01**: RESTful API with API key authentication for all endpoints
-- [ ] **API-02**: All trace content is scanned for PII/secrets before storage (API keys, passwords, tokens)
+- [x] **API-01**: RESTful API with API key authentication for all endpoints
+- [x] **API-02**: All trace content is scanned for PII/secrets before storage (API keys, passwords, tokens)
 
 ### MCP Server
 
@@ -55,10 +55,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Trust & Safety
 
-- [ ] **SAFE-01**: Traces use two-tier pending/validated model with configurable validation thresholds
-- [ ] **SAFE-02**: Automated PII scanning blocks traces containing secrets, credentials, or personal data
-- [ ] **SAFE-03**: Basic content moderation allows flagging and removal of harmful/spam traces
-- [ ] **SAFE-04**: Traces referencing outdated libraries/APIs are automatically flagged as potentially stale
+- [x] **SAFE-01**: Traces use two-tier pending/validated model with configurable validation thresholds
+- [x] **SAFE-02**: Automated PII scanning blocks traces containing secrets, credentials, or personal data
+- [x] **SAFE-03**: Basic content moderation allows flagging and removal of harmful/spam traces
+- [x] **SAFE-04**: Traces referencing outdated libraries/APIs are automatically flagged as potentially stale
 
 ### Cold Start
 
@@ -110,15 +110,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SRCH-02 | Phase 3 | Pending |
 | SRCH-03 | Phase 3 | Pending |
 | SRCH-04 | Phase 3 | Pending |
-| CONT-01 | Phase 2 | Pending |
-| CONT-02 | Phase 2 | Pending |
-| CONT-03 | Phase 2 | Pending |
-| CONT-04 | Phase 2 | Pending |
+| CONT-01 | Phase 2 | Done |
+| CONT-02 | Phase 2 | Done |
+| CONT-03 | Phase 4 | Pending |
+| CONT-04 | Phase 2 | Done |
 | REPU-01 | Phase 4 | Pending |
 | REPU-02 | Phase 4 | Pending |
 | REPU-03 | Phase 4 | Pending |
-| API-01 | Phase 2 | Pending |
-| API-02 | Phase 2 | Pending |
+| API-01 | Phase 2 | Done |
+| API-02 | Phase 2 | Done |
 | MCP-01 | Phase 5 | Pending |
 | MCP-02 | Phase 5 | Pending |
 | MCP-03 | Phase 5 | Pending |
@@ -127,10 +127,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SKIL-02 | Phase 6 | Pending |
 | SKIL-03 | Phase 6 | Pending |
 | SKIL-04 | Phase 6 | Pending |
-| SAFE-01 | Phase 2 | Pending |
-| SAFE-02 | Phase 2 | Pending |
-| SAFE-03 | Phase 2 | Pending |
-| SAFE-04 | Phase 2 | Pending |
+| SAFE-01 | Phase 2 | Done |
+| SAFE-02 | Phase 2 | Done |
+| SAFE-03 | Phase 2 | Done |
+| SAFE-04 | Phase 2 | Done |
 | SEED-01 | Phase 7 | Pending |
 
 **Coverage:**
