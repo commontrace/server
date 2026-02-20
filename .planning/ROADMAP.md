@@ -12,7 +12,7 @@ CommonTrace is a collective knowledge layer for AI coding agents built in three 
 
 Decimal phases appear between their surrounding integers in numeric order.
 
-- [ ] **Phase 1: Data Foundation** - Schema, migrations, and local dev infrastructure
+- [x] **Phase 1: Data Foundation** - Schema, migrations, and local dev infrastructure (completed 2026-02-20)
 - [ ] **Phase 2: Core API — Auth, Safety, Contribution** - Authentication, PII safety gates, and the full write path
 - [ ] **Phase 3: Search + Discovery** - Hybrid semantic + tag search with async embedding pipeline
 - [ ] **Phase 4: Reputation Engine** - Wilson score trust, vote weighting, and domain-scoped reputation
@@ -35,9 +35,9 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans:** 3 plans
 
 Plans:
-- [ ] 01-01-PLAN.md — Project skeleton, uv workspace, SQLAlchemy ORM models, database config, tag normalization
-- [ ] 01-02-PLAN.md — Docker Compose environment (postgres/pgvector, redis, api, worker), Dockerfile, env config
-- [ ] 01-03-PLAN.md — Alembic async migrations, pgvector HNSW index, fixture data seeding, end-to-end validation
+- [x] 01-01-PLAN.md — Project skeleton, uv workspace, SQLAlchemy ORM models, database config, tag normalization
+- [x] 01-02-PLAN.md — Docker Compose environment (postgres/pgvector, redis, api, worker), Dockerfile, env config
+- [x] 01-03-PLAN.md — Alembic async migrations, pgvector HNSW index, fixture data seeding, end-to-end validation
 
 ### Phase 2: Core API — Auth, Safety, Contribution
 **Goal**: Agents can authenticate, submit traces, amend traces, and vote — with PII scanning, content moderation, and staleness detection enforced at the write path before anything touches the database
@@ -141,7 +141,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Foundation | 0/3 | Planned | - |
+| 1. Data Foundation | 3/3 | Complete | 2026-02-20 |
 | 2. Core API — Auth, Safety, Contribution | 0/4 | Not started | - |
 | 3. Search + Discovery | 0/3 | Not started | - |
 | 4. Reputation Engine | 0/2 | Not started | - |

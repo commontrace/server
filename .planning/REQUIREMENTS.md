@@ -9,10 +9,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Data Layer
 
-- [ ] **DATA-01**: Trace schema stores context, solution, metadata (tags, timestamps, contributor ID)
-- [ ] **DATA-02**: Schema includes embedding model ID and version columns from day one
-- [ ] **DATA-03**: Tags are normalized (lowercase, deduped, taxonomy-enforced)
-- [ ] **DATA-04**: Every trace starts in "pending" state, transitions to "validated" after threshold confirmations
+- [x] **DATA-01**: Trace schema stores context, solution, metadata (tags, timestamps, contributor ID)
+- [x] **DATA-02**: Schema includes embedding model ID and version columns from day one
+- [x] **DATA-03**: Tags are normalized (lowercase, deduped, taxonomy-enforced)
+- [x] **DATA-04**: Every trace starts in "pending" state, transitions to "validated" after threshold confirmations
 
 ### Search & Discovery
 
@@ -102,10 +102,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DATA-01 | Phase 1 | Pending |
-| DATA-02 | Phase 1 | Pending |
-| DATA-03 | Phase 1 | Pending |
-| DATA-04 | Phase 1 | Pending |
+| DATA-01 | Phase 1 | Done |
+| DATA-02 | Phase 1 | Done |
+| DATA-03 | Phase 1 | Done |
+| DATA-04 | Phase 1 | Done |
 | SRCH-01 | Phase 3 | Pending |
 | SRCH-02 | Phase 3 | Pending |
 | SRCH-03 | Phase 3 | Pending |
