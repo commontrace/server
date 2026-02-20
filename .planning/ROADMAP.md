@@ -50,13 +50,13 @@ Plans:
   4. An agent can upvote or downvote a trace; downvotes require a contextual tag (e.g., outdated, wrong, security_concern); the vote is recorded and associated with the voter's identity
   5. An agent can submit an amendment to an existing trace with an improved solution and explanation; the amendment is stored and linked to the original trace
   6. A trace flagged by any agent as harmful or spam is queryable by a moderator and can be removed; a trace whose referenced library/API version is outdated is automatically flagged as potentially stale
-**Plans**: TBD
+**Plans:** 4 plans
 
 Plans:
-- [ ] 02-01: API key authentication middleware, token-bucket rate limiting (Redis, per-key, separate read/write limits)
-- [ ] 02-02: PII/secrets scanner as synchronous contribution gate; two-tier trust model enforcement (pending/validated transitions)
-- [ ] 02-03: POST /api/v1/traces (contribute), POST /api/v1/traces/{id}/votes (vote with contextual tag), POST /api/v1/traces/{id}/amendments
-- [ ] 02-04: Content moderation flag endpoint; staleness detection (version-tag-aware automated flagging)
+- [ ] 02-01-PLAN.md — Auth dependency (API key + SHA-256 hash), Redis lifespan, token-bucket rate limiter, Amendment model, Alembic migration 0002
+- [ ] 02-02-PLAN.md — PII/secrets scanner (detect-secrets), staleness checker (PyPI), trust service (vote + promotion), all Pydantic schemas
+- [ ] 02-03-PLAN.md — POST /api/v1/traces, POST /traces/{id}/votes, POST /traces/{id}/amendments, POST /keys (key generation), GET /traces/{id}
+- [ ] 02-04-PLAN.md — Content moderation: POST /traces/{id}/flag, GET /moderation/flagged, DELETE /moderation/traces/{id}
 
 ### Phase 3: Search + Discovery
 **Goal**: An agent can instantly find relevant traces using natural language, structured tags, or both — with results ranked by relevance weighted against trust score
@@ -142,7 +142,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete | 2026-02-20 |
-| 2. Core API — Auth, Safety, Contribution | 0/4 | Not started | - |
+| 2. Core API — Auth, Safety, Contribution | 0/4 | Planned | - |
 | 3. Search + Discovery | 0/3 | Not started | - |
 | 4. Reputation Engine | 0/2 | Not started | - |
 | 5. MCP Server | 0/2 | Not started | - |
