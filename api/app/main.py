@@ -7,7 +7,7 @@ from app.config import settings
 from app.logging_config import configure_logging
 from app.metrics import metrics_endpoint
 from app.middleware.logging_middleware import RequestLoggingMiddleware
-from app.routers import amendments, auth, moderation, reputation, search, traces, votes
+from app.routers import amendments, auth, moderation, reputation, search, tags, traces, votes
 
 
 @asynccontextmanager
@@ -45,6 +45,9 @@ app.include_router(search.router)
 
 # Reputation router (04-02)
 app.include_router(reputation.router)
+
+# Tags router (05-01)
+app.include_router(tags.router)
 
 # Prometheus metrics endpoint
 app.get("/metrics")(metrics_endpoint)
