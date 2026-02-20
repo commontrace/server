@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
-**Current focus:** Phase 3 complete — ready for Phase 4
+**Current focus:** Phase 4 in progress — reputation engine foundation complete
 
 ## Current Position
 
-Phase: 3 of 7 (Search Discovery) — COMPLETE
-Plan: 3 of 3 in current phase — all verified
-Status: Phase 3 complete, verification passed (5/5 must-haves)
-Last activity: 2026-02-20 — Phase 3 verified and marked complete
+Phase: 4 of 7 (Reputation Engine) — IN PROGRESS
+Plan: 1 of 3 in current phase — complete
+Status: Phase 4 Plan 01 complete — Wilson score, ContributorDomainReputation model, migration, RequireEmail, schemas
+Last activity: 2026-02-20 — Phase 4 Plan 01 executed and committed
 
-Progress: [█████░░░░░] 43%
+Progress: [██████░░░░] 50%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 10
+- Total plans completed: 11
 - Average duration: ~4 min
-- Total execution time: ~36 min
+- Total execution time: ~44 min
 
 **By Phase:**
 
@@ -30,9 +30,10 @@ Progress: [█████░░░░░] 43%
 | 01-data-foundation | 3 | 14 min | ~5 min |
 | 02-core-api | 4 | 16 min | ~4 min |
 | 03-search-discovery | 3/3 | 6 min | ~2 min |
+| 04-reputation-engine | 1/3 | 8 min | ~8 min |
 
 **Recent Trend:**
-- Last 5 plans: 3 min, 4 min, 8 min, 3 min, 3 min
+- Last 5 plans: 4 min, 8 min, 3 min, 3 min, 8 min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -77,6 +78,11 @@ Recent decisions affecting current work:
 - [03-03]: Search metrics kept in routers/search.py (Plan 03-02) — not moved to metrics.py to avoid prometheus_client duplicate registration errors
 - [03-03]: configure_logging() called independently in API lifespan and worker run_worker() — each process configures structlog separately
 - [03-03]: Drift detection runs once at worker startup via single GROUP BY query, not per-batch
+- [04-01]: Wilson score uses z=1.9600 (95% CI) — returns 0.0 for total_votes==0, float in [0,1] otherwise
+- [04-01]: CDR_UNIQUE_CONSTRAINT constant at module level for safe ON CONFLICT DO UPDATE in plan 04-02
+- [04-01]: lazy='raise' on ContributorDomainReputation.contributor — prevents implicit async loading
+- [04-01]: RequireEmail raises 403 (not 401) — user is authenticated but lacks identity cost (email)
+- [04-01]: email-validator installed as direct uv dependency (not optional) — required for Pydantic EmailStr
 
 ### Pending Todos
 
@@ -91,5 +97,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Phase 3 complete and verified — ready for /gsd:plan-phase 4
+Stopped at: Completed 04-reputation-engine/04-01-PLAN.md — ready for Plan 04-02
 Resume file: None
