@@ -4,6 +4,7 @@ from .user import User
 from .vote import Vote, VoteType
 from .tag import Tag, trace_tags
 from .amendment import Amendment
+from .reputation import ContributorDomainReputation
 
 __all__ = [
     "Base",
@@ -15,4 +16,5 @@ __all__ = [
     "Tag",
     "trace_tags",
     "Amendment",
+    "ContributorDomainReputation",
 ]

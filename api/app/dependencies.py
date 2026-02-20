@@ -43,3 +43,22 @@ async def get_current_user(
 # Annotated type aliases for clean endpoint signatures
 CurrentUser = Annotated[User, Depends(get_current_user)]
 RedisClient = Annotated[aioredis.Redis, Depends(get_redis)]
+
+
+async def require_email(user: User = Depends(get_current_user)) -> User:
+    """Gate: requires authenticated user to have a registered email.
+
+    Raises 403 if user.email is None. Implements identity cost (REPU-02):
+    anonymous API key usage cannot submit contributions.
+    Applied to write paths only — NOT to POST /api/v1/keys or GET endpoints.
+    """
+    if user.email is None:
+        raise HTTPException(
+            status_code=403,
+            detail="Email registration required to submit contributions. "
+                   "Re-register with POST /api/v1/keys providing an email address.",
+        )
+    return user
+
+
+RequireEmail = Annotated[User, Depends(require_email)]
