@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
-**Current focus:** Phase 5 complete — MCP server with circuit breaker resilience ready for Phase 6
+**Current focus:** Phase 6 in progress — Claude Code skill layer (plan 1 of 3 complete)
 
 ## Current Position
 
-Phase: 5 of 7 (MCP Server) — COMPLETE
-Plan: 2 of 2 in current phase — both plans complete
-Status: Phase 05 complete; ready for Phase 06 (skill layer)
-Last activity: 2026-02-20 — Phase 5 Plan 2 complete (circuit breaker + graceful degradation)
+Phase: 6 of 7 (Claude Code Skill) — IN PROGRESS
+Plan: 1 of 3 in current phase — plan 1 complete (plugin shell)
+Status: Phase 06 plan 1 complete; ready for plan 2 (hooks)
+Last activity: 2026-02-20 — Phase 6 Plan 1 complete (plugin manifest, MCP auto-config, slash commands, SKILL.md)
 
-Progress: [████████░░] 71%
+Progress: [████████░░] 74%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 14
+- Total plans completed: 15
 - Average duration: ~4 min
-- Total execution time: ~58 min
+- Total execution time: ~60 min
 
 **By Phase:**
 
@@ -32,9 +32,10 @@ Progress: [████████░░] 71%
 | 03-search-discovery | 3/3 | 6 min | ~2 min |
 | 04-reputation-engine | 2/3 | 11 min | ~5.5 min |
 | 05-mcp-server | 2/2 | 11 min | ~5.5 min |
+| 06-claude-code-skill | 1/3 | 2 min | ~2 min |
 
 **Recent Trend:**
-- Last 5 plans: 8 min, 3 min, 3 min, 8 min, 3 min
+- Last 5 plans: 3 min, 3 min, 8 min, 3 min, 2 min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -97,6 +98,9 @@ Recent decisions affecting current work:
 - [05-02]: 4xx errors do NOT trip circuit — check status_code >= 500 outside circuit, call _on_failure() manually for server errors
 - [05-02]: half-open state allows exactly one probe; _on_success() resets to closed, _on_failure() re-opens
 - [05-02]: Read tool degradation: "Continuing without results" — write tool degradation: "Please try again later"
+- [Phase 06-01]: Plugin name and .mcp.json server key both 'commontrace' — consistency required for correct MCP tool prefix mcp__plugin_commontrace_commontrace__*
+- [Phase 06-01]: HTTP transport in .mcp.json targeting deployed MCP server on port 8080 — no stdio; COMMONTRACE_API_KEY has no default (API keys require explicit env var)
+- [Phase 06-01]: /trace:contribute enforces preview-then-confirm flow — no trace submits without explicit yes (SKIL-04 requirement)
 
 ### Pending Todos
 
@@ -110,5 +114,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 05-02-PLAN.md — circuit breaker + graceful degradation on all 5 MCP tools
+Stopped at: Completed 06-01-PLAN.md — Claude Code plugin shell with MCP auto-config, /trace:search, /trace:contribute, SKILL.md
 Resume file: None
