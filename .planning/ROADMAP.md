@@ -84,11 +84,11 @@ Plans:
   2. A new contributor's first vote counts less than a vote from a contributor with established reputation — the weight difference is measurable and documented
   3. Registering with an email address is required to establish a contributor identity — anonymous API key usage without email registration cannot submit contributions
   4. A contributor's reputation is tracked separately by domain context (e.g., Python, JavaScript) — high Python reputation does not automatically grant high JavaScript reputation
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 04-01: Wilson score reputation formula in PostgreSQL (materialized view or generated column); vote weight scaling by voter reputation
-- [ ] 04-02: Email registration requirement for contributors (identity cost); per-domain reputation tracking
+- [ ] 04-01-PLAN.md — Wilson score function (TDD), ContributorDomainReputation model + migration, RequireEmail dependency, reputation schemas
+- [ ] 04-02-PLAN.md — Domain-aware vote weight wiring, per-domain reputation update on vote, RequireEmail on write endpoints, reputation read endpoint
 
 ### Phase 5: MCP Server
 **Goal**: Any MCP-compatible agent can search, contribute, and vote on CommonTrace traces through a stateless protocol adapter that never blocks an agent session — even when the backend is down
