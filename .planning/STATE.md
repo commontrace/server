@@ -5,21 +5,21 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
-**Current focus:** Phase 3 in progress — Plan 01 complete (embedding worker)
+**Current focus:** Phase 3 in progress — Plan 02 complete (hybrid search endpoint)
 
 ## Current Position
 
 Phase: 3 of 7 (Search Discovery) — IN PROGRESS
-Plan: 1 of 3 in current phase — complete
-Status: Phase 3 Plan 01 complete — EmbeddingService and worker loop built and committed
-Last activity: 2026-02-20 — Phase 3 Plan 01 executed
+Plan: 2 of 3 in current phase — complete
+Status: Phase 3 Plan 02 complete — Hybrid search endpoint (POST /api/v1/traces/search) built and committed
+Last activity: 2026-02-20 — Phase 3 Plan 02 executed
 
-Progress: [████░░░░░░] 33%
+Progress: [█████░░░░░] 43%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 8
+- Total plans completed: 9
 - Average duration: ~4 min
 - Total execution time: ~30 min
 
@@ -29,7 +29,7 @@ Progress: [████░░░░░░] 33%
 |-------|-------|-------|----------|
 | 01-data-foundation | 3 | 14 min | ~5 min |
 | 02-core-api | 4 | 16 min | ~4 min |
-| 03-search-discovery | 1/3 | 3 min | ~3 min |
+| 03-search-discovery | 2/3 | 4 min | ~2 min |
 
 **Recent Trend:**
 - Last 5 plans: 3 min, 4 min, 8 min, 3 min, 3 min
@@ -70,6 +70,10 @@ Recent decisions affecting current work:
 - [03-01]: Lazy-init AsyncOpenAI client — created only on first embed() call
 - [03-01]: Worker depends only on postgres+redis in docker-compose (not api service)
 - [03-01]: alembic upgrade head runs in worker entrypoint to handle migration race
+- [03-02]: SEARCH_LIMIT_ANN=100 over-fetch before trust re-ranking to avoid cutting off good semantic matches
+- [03-02]: GROUP BY uses full cosine_distance expression not alias (PostgreSQL requires expression, not SELECT alias)
+- [03-02]: Tag-only search sets similarity_score=0.0, combined_score=trust_score — no semantic ranking
+- [03-02]: 503 only in semantic mode when OPENAI_API_KEY absent; tag-only never 503s
 
 ### Pending Todos
 
@@ -84,5 +88,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 03-search-discovery 03-01-PLAN.md — ready for Plan 03-02 (semantic search endpoint)
+Stopped at: Completed 03-search-discovery 03-02-PLAN.md — ready for Plan 03-03 (observability / metrics consolidation)
 Resume file: None
