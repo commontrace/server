@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
-**Current focus:** Phase 5 in progress — MCP server foundation complete
+**Current focus:** Phase 5 complete — MCP server with circuit breaker resilience ready for Phase 6
 
 ## Current Position
 
-Phase: 5 of 7 (MCP Server) — IN PROGRESS
-Plan: 1 of 2 in current phase — plan 01 complete
-Status: Plan 05-01 complete; plan 05-02 (circuit breaker) remains
-Last activity: 2026-02-20 — Phase 5 Plan 1 complete (MCP server foundation)
+Phase: 5 of 7 (MCP Server) — COMPLETE
+Plan: 2 of 2 in current phase — both plans complete
+Status: Phase 05 complete; ready for Phase 06 (skill layer)
+Last activity: 2026-02-20 — Phase 5 Plan 2 complete (circuit breaker + graceful degradation)
 
-Progress: [███████░░░] 64%
+Progress: [████████░░] 71%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 13
+- Total plans completed: 14
 - Average duration: ~4 min
-- Total execution time: ~55 min
+- Total execution time: ~58 min
 
 **By Phase:**
 
@@ -31,10 +31,10 @@ Progress: [███████░░░] 64%
 | 02-core-api | 4 | 16 min | ~4 min |
 | 03-search-discovery | 3/3 | 6 min | ~2 min |
 | 04-reputation-engine | 2/3 | 11 min | ~5.5 min |
-| 05-mcp-server | 1/2 | 8 min | ~8 min |
+| 05-mcp-server | 2/2 | 11 min | ~5.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 8 min, 3 min, 3 min, 8 min, 8 min
+- Last 5 plans: 8 min, 3 min, 3 min, 8 min, 3 min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -91,9 +91,12 @@ Recent decisions affecting current work:
 - [04-02]: users.reputation_score recomputed via SUM aggregation in same transaction as domain upsert — always consistent
 - [05-01]: FastMCP 3.0.0 CurrentHeaders() is in fastmcp.dependencies — verified before implementation
 - [05-01]: MCP tools return str not dict — format_* functions convert JSON to agent-readable strings
-- [05-01]: BackendClient has no circuit breaker — Plan 05-02 adds it; kept simple for now
 - [05-01]: GET /api/v1/tags uses CurrentUser not RequireEmail — read operation, no identity cost required
 - [05-01]: docker-compose uses service_started not service_healthy for api dependency — circuit breaker handles backend unavailability
+- [05-02]: CircuitBreaker custom async implementation using asyncio.wait_for — no third-party library needed
+- [05-02]: 4xx errors do NOT trip circuit — check status_code >= 500 outside circuit, call _on_failure() manually for server errors
+- [05-02]: half-open state allows exactly one probe; _on_success() resets to closed, _on_failure() re-opens
+- [05-02]: Read tool degradation: "Continuing without results" — write tool degradation: "Please try again later"
 
 ### Pending Todos
 
@@ -101,12 +104,11 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 5]: FastMCP v2 API was evolving rapidly at research cutoff — RESOLVED: verified 3.0.0 API before building
 - [Phase 6]: Auto-query trigger heuristics have no established prior art — plan for iteration
 - [Phase 7]: Freemium tier pricing needs market validation
 
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 05-01-PLAN.md — MCP server foundation (5 tools, backend client, tags endpoint)
+Stopped at: Completed 05-02-PLAN.md — circuit breaker + graceful degradation on all 5 MCP tools
 Resume file: None
