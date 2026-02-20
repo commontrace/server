@@ -114,11 +114,11 @@ Plans:
   2. Installing the skill automatically configures the MCP server connection — no manual MCP configuration is required
   3. At the start of a task, the skill silently queries CommonTrace based on detected context (repo, file type, error message) and injects relevant traces into agent context — without user prompting and without blocking task start
   4. After successfully completing a task, the skill prompts the agent to contribute a trace — the agent can preview and confirm before submission; no trace is submitted without explicit confirmation
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 06-01: CLAUDE.md skill definition; /trace:search and /trace:contribute slash command implementations; MCP auto-configuration on install
-- [ ] 06-02: Auto-query hook (context detection heuristics, silent injection, threshold gating); post-task contribution prompt with preview-confirm flow
+- [ ] 06-01-PLAN.md — Plugin manifest, .mcp.json auto-configuration, /trace:search and /trace:contribute slash commands, SKILL.md
+- [ ] 06-02-PLAN.md — SessionStart hook (context detection + silent auto-query via direct API), Stop hook (post-task contribution prompt with loop prevention)
 
 ### Phase 7: Cold Start + Launch Hardening
 **Goal**: The knowledge base contains enough high-quality traces to deliver immediate value on first use, and the system is validated at realistic load before any public announcement
