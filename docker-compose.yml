@@ -53,7 +53,7 @@ services:
       redis:
         condition: service_healthy
     command: >
-      python -c "import asyncio; asyncio.run(asyncio.sleep(86400))"
+      sh -c "alembic upgrade head && python -m app.worker.embedding_worker"
 
 volumes:
   postgres_data:
