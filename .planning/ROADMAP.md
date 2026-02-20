@@ -32,12 +32,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. Submitting a tag with mixed case, duplicates, or non-canonical forms normalizes it to the same stored value as its canonical equivalent
   4. A newly created trace is in "pending" state and transitions to "validated" only after the threshold number of independent confirmations are recorded
   5. Alembic migrations run cleanly on a fresh database; Docker Compose brings up postgres/pgvector, redis, api, and worker services in one command
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 01-01: PostgreSQL schema — traces, users, votes, tags, trace_tags tables with all columns
-- [ ] 01-02: pgvector HNSW index, SQLAlchemy 2.0 async ORM models, Alembic migrations
-- [ ] 01-03: Docker Compose local dev environment (postgres/pgvector, redis, api, worker)
+- [ ] 01-01-PLAN.md — Project skeleton, uv workspace, SQLAlchemy ORM models, database config, tag normalization
+- [ ] 01-02-PLAN.md — Docker Compose environment (postgres/pgvector, redis, api, worker), Dockerfile, env config
+- [ ] 01-03-PLAN.md — Alembic async migrations, pgvector HNSW index, fixture data seeding, end-to-end validation
 
 ### Phase 2: Core API — Auth, Safety, Contribution
 **Goal**: Agents can authenticate, submit traces, amend traces, and vote — with PII scanning, content moderation, and staleness detection enforced at the write path before anything touches the database
@@ -137,11 +137,11 @@ Plans:
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 → 2 → 3 → 4 → 5 → 6 → 7
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Data Foundation | 0/3 | Not started | - |
+| 1. Data Foundation | 0/3 | Planned | - |
 | 2. Core API — Auth, Safety, Contribution | 0/4 | Not started | - |
 | 3. Search + Discovery | 0/3 | Not started | - |
 | 4. Reputation Engine | 0/2 | Not started | - |
