@@ -5,23 +5,23 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
-**Current focus:** Phase 4 complete — ready for Phase 5
+**Current focus:** Phase 5 in progress — MCP server foundation complete
 
 ## Current Position
 
-Phase: 4 of 7 (Reputation Engine) — COMPLETE
-Plan: 2 of 2 in current phase — all verified
-Status: Phase 4 complete, verification passed (4/4 must-haves)
-Last activity: 2026-02-20 — Phase 4 verified and marked complete
+Phase: 5 of 7 (MCP Server) — IN PROGRESS
+Plan: 1 of 2 in current phase — plan 01 complete
+Status: Plan 05-01 complete; plan 05-02 (circuit breaker) remains
+Last activity: 2026-02-20 — Phase 5 Plan 1 complete (MCP server foundation)
 
-Progress: [██████░░░░] 57%
+Progress: [███████░░░] 64%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 12
+- Total plans completed: 13
 - Average duration: ~4 min
-- Total execution time: ~47 min
+- Total execution time: ~55 min
 
 **By Phase:**
 
@@ -31,9 +31,10 @@ Progress: [██████░░░░] 57%
 | 02-core-api | 4 | 16 min | ~4 min |
 | 03-search-discovery | 3/3 | 6 min | ~2 min |
 | 04-reputation-engine | 2/3 | 11 min | ~5.5 min |
+| 05-mcp-server | 1/2 | 8 min | ~8 min |
 
 **Recent Trend:**
-- Last 5 plans: 4 min, 8 min, 3 min, 3 min, 8 min
+- Last 5 plans: 8 min, 3 min, 3 min, 8 min, 8 min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -88,6 +89,11 @@ Recent decisions affecting current work:
 - [04-02]: update_contributor_domain_reputation is no-op when domain_tags empty — no phantom rows for untagged traces
 - [04-02]: Reputation read endpoint uses CurrentUser not RequireEmail — reading is informational, not a contribution
 - [04-02]: users.reputation_score recomputed via SUM aggregation in same transaction as domain upsert — always consistent
+- [05-01]: FastMCP 3.0.0 CurrentHeaders() is in fastmcp.dependencies — verified before implementation
+- [05-01]: MCP tools return str not dict — format_* functions convert JSON to agent-readable strings
+- [05-01]: BackendClient has no circuit breaker — Plan 05-02 adds it; kept simple for now
+- [05-01]: GET /api/v1/tags uses CurrentUser not RequireEmail — read operation, no identity cost required
+- [05-01]: docker-compose uses service_started not service_healthy for api dependency — circuit breaker handles backend unavailability
 
 ### Pending Todos
 
@@ -95,12 +101,12 @@ None yet.
 
 ### Blockers/Concerns
 
-- [Phase 5]: FastMCP v2 API was evolving rapidly at research cutoff — verify current syntax before building
+- [Phase 5]: FastMCP v2 API was evolving rapidly at research cutoff — RESOLVED: verified 3.0.0 API before building
 - [Phase 6]: Auto-query trigger heuristics have no established prior art — plan for iteration
 - [Phase 7]: Freemium tier pricing needs market validation
 
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Phase 4 complete and verified — ready for /gsd:plan-phase 5
+Stopped at: Completed 05-01-PLAN.md — MCP server foundation (5 tools, backend client, tags endpoint)
 Resume file: None
