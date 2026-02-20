@@ -16,7 +16,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 2: Core API — Auth, Safety, Contribution** - Authentication, PII safety gates, and the full write path (completed 2026-02-20)
 - [x] **Phase 3: Search + Discovery** - Hybrid semantic + tag search with async embedding pipeline (completed 2026-02-20)
 - [x] **Phase 4: Reputation Engine** - Wilson score trust, vote weighting, and domain-scoped reputation (completed 2026-02-20)
-- [ ] **Phase 5: MCP Server** - Stateless protocol adapter exposing CommonTrace tools to any agent
+- [x] **Phase 5: MCP Server** - Stateless protocol adapter exposing CommonTrace tools to any agent (completed 2026-02-20)
 - [ ] **Phase 6: Claude Code Skill** - Auto-query on task start and explicit contribution commands
 - [ ] **Phase 7: Cold Start + Launch Hardening** - Seed knowledge base and validate system at launch scale
 
@@ -102,8 +102,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 05-01-PLAN.md — FastMCP 3.0.0 server with 5 tool definitions (search_traces, contribute_trace, vote_trace, get_trace, list_tags), backend HTTP client, response formatters, GET /api/v1/tags endpoint, Docker Compose service
-- [ ] 05-02-PLAN.md — Custom circuit breaker (closed/open/half-open), per-operation SLA timeouts (200ms read, 2s write), graceful degradation messages in all tools, API key injection via CurrentHeaders() + env var fallback
+- [x] 05-01-PLAN.md — FastMCP 3.0.0 server with 5 tool definitions (search_traces, contribute_trace, vote_trace, get_trace, list_tags), backend HTTP client, response formatters, GET /api/v1/tags endpoint, Docker Compose service
+- [x] 05-02-PLAN.md — Custom circuit breaker (closed/open/half-open), per-operation SLA timeouts (200ms read, 2s write), graceful degradation messages in all tools, API key injection via CurrentHeaders() + env var fallback
 
 ### Phase 6: Claude Code Skill
 **Goal**: Claude Code agents benefit from CommonTrace automatically during every session and can contribute knowledge explicitly — without CommonTrace ever blocking their work or polluting the knowledge base with unreviewed contributions
@@ -145,6 +145,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 2. Core API — Auth, Safety, Contribution | 4/4 | Complete | 2026-02-20 |
 | 3. Search + Discovery | 3/3 | Complete | 2026-02-20 |
 | 4. Reputation Engine | 2/2 | Complete | 2026-02-20 |
-| 5. MCP Server | 0/2 | Planned | - |
+| 5. MCP Server | 2/2 | Complete | 2026-02-20 |
 | 6. Claude Code Skill | 0/2 | Not started | - |
 | 7. Cold Start + Launch Hardening | 0/2 | Not started | - |
