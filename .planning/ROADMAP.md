@@ -68,12 +68,12 @@ Plans:
   3. A single hybrid search query combining natural language and tag filters returns results that satisfy both the semantic match and the tag constraints simultaneously
   4. Search results are ordered so that a trace with high semantic relevance and high trust score ranks above a trace with identical semantic relevance but low trust score
   5. A newly contributed trace (with embedding generated) appears in search results within seconds of embedding completion — no restart or manual index refresh required
-**Plans**: TBD
+**Plans:** 3 plans
 
 Plans:
-- [ ] 03-01: ARQ async embedding worker (fetch pending traces, call embedding API, store vector, update status); local sentence-transformers fallback
-- [ ] 03-02: GET /api/v1/traces/search — hybrid query (pgvector cosine ANN + SQL tag filter + trust-weighted re-ranking)
-- [ ] 03-03: Observability — structlog structured logging, Prometheus metrics, embedding drift monitoring
+- [ ] 03-01-PLAN.md — Async embedding worker (OpenAI text-embedding-3-small) + EmbeddingService + docker-compose worker wiring
+- [ ] 03-02-PLAN.md — POST /api/v1/traces/search — hybrid query (pgvector cosine ANN + tag pre-filter + trust-weighted re-ranking)
+- [ ] 03-03-PLAN.md — Observability: structlog JSON logging, Prometheus metrics (/metrics), request middleware, embedding drift detection
 
 ### Phase 4: Reputation Engine
 **Goal**: Agent contributions earn trust over time, high-reputation votes carry more weight, and reputation is tracked per domain so a Python expert's vote on a Python trace matters more than a stranger's
