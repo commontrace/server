@@ -4,6 +4,9 @@ Defines all five MCP tools as a thin protocol adapter between MCP clients
 and the CommonTrace FastAPI backend. Each tool translates an MCP call into
 an authenticated HTTP request and formats the response for agent consumption.
 
+All backend failures return human-readable degradation strings — never
+unhandled exceptions — so agent sessions can always continue.
+
 Tools:
     search_traces   -- POST /api/v1/traces/search  (read, 200ms SLA)
     contribute_trace -- POST /api/v1/traces         (write, 2s SLA)
@@ -17,7 +20,7 @@ from fastmcp import FastMCP
 from fastmcp.dependencies import CurrentHeaders, Depends
 from starlette.responses import JSONResponse
 
-from app.backend_client import backend
+from app.backend_client import backend, CircuitOpenError, BackendUnavailableError
 from app.config import settings
 from app.formatters import (
     format_contribution_result,
@@ -76,14 +79,25 @@ async def search_traces(
             timeout=settings.read_timeout,
         )
         return format_search_results(result)
+    except CircuitOpenError:
+        return (
+            "[CommonTrace unavailable] The knowledge base is temporarily unreachable. "
+            "Continuing without trace lookup. You can retry later."
+        )
+    except BackendUnavailableError:
+        return (
+            "[CommonTrace timeout] Request took too long and was cancelled. "
+            "The knowledge base may be under heavy load. Continuing without results."
+        )
     except httpx.HTTPStatusError as exc:
+        detail = "Unknown error"
         try:
-            detail = exc.response.json().get("detail", "Search failed")
+            detail = exc.response.json().get("detail", str(exc))
         except Exception:
-            detail = "Search failed"
+            detail = str(exc)
         return format_error(exc.response.status_code, detail)
-    except (httpx.HTTPError, Exception) as exc:
-        return format_error(503, f"CommonTrace backend unavailable: {type(exc).__name__}")
+    except Exception as exc:
+        return f"[CommonTrace error] Unexpected error: {exc}. Continuing without results."
 
 
 @mcp.tool(annotations={"readOnlyHint": False})
@@ -117,14 +131,25 @@ async def contribute_trace(
             timeout=settings.write_timeout,
         )
         return format_contribution_result(result)
+    except CircuitOpenError:
+        return (
+            "[CommonTrace unavailable] The knowledge base is temporarily unreachable. "
+            "Your contribution could not be submitted. Please try again later."
+        )
+    except BackendUnavailableError:
+        return (
+            "[CommonTrace timeout] The submission took too long and was cancelled. "
+            "The knowledge base may be under heavy load. Please try again later."
+        )
     except httpx.HTTPStatusError as exc:
+        detail = "Unknown error"
         try:
-            detail = exc.response.json().get("detail", "Contribution failed")
+            detail = exc.response.json().get("detail", str(exc))
         except Exception:
-            detail = "Contribution failed"
+            detail = str(exc)
         return format_error(exc.response.status_code, detail)
-    except (httpx.HTTPError, Exception) as exc:
-        return format_error(503, f"CommonTrace backend unavailable: {type(exc).__name__}")
+    except Exception as exc:
+        return f"[CommonTrace error] Unexpected error: {exc}. Your submission was not recorded."
 
 
 @mcp.tool(annotations={"readOnlyHint": False})
@@ -159,14 +184,25 @@ async def vote_trace(
             timeout=settings.write_timeout,
         )
         return format_vote_result(result)
+    except CircuitOpenError:
+        return (
+            "[CommonTrace unavailable] The knowledge base is temporarily unreachable. "
+            "Your contribution could not be submitted. Please try again later."
+        )
+    except BackendUnavailableError:
+        return (
+            "[CommonTrace timeout] The submission took too long and was cancelled. "
+            "The knowledge base may be under heavy load. Please try again later."
+        )
     except httpx.HTTPStatusError as exc:
+        detail = "Unknown error"
         try:
-            detail = exc.response.json().get("detail", "Vote failed")
+            detail = exc.response.json().get("detail", str(exc))
         except Exception:
-            detail = "Vote failed"
+            detail = str(exc)
         return format_error(exc.response.status_code, detail)
-    except (httpx.HTTPError, Exception) as exc:
-        return format_error(503, f"CommonTrace backend unavailable: {type(exc).__name__}")
+    except Exception as exc:
+        return f"[CommonTrace error] Unexpected error: {exc}. Your submission was not recorded."
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -188,14 +224,25 @@ async def get_trace(
             timeout=settings.read_timeout,
         )
         return format_trace(result)
+    except CircuitOpenError:
+        return (
+            "[CommonTrace unavailable] The knowledge base is temporarily unreachable. "
+            "Continuing without trace lookup. You can retry later."
+        )
+    except BackendUnavailableError:
+        return (
+            "[CommonTrace timeout] Request took too long and was cancelled. "
+            "The knowledge base may be under heavy load. Continuing without results."
+        )
     except httpx.HTTPStatusError as exc:
+        detail = "Unknown error"
         try:
-            detail = exc.response.json().get("detail", "Trace not found")
+            detail = exc.response.json().get("detail", str(exc))
         except Exception:
-            detail = "Trace not found"
+            detail = str(exc)
         return format_error(exc.response.status_code, detail)
-    except (httpx.HTTPError, Exception) as exc:
-        return format_error(503, f"CommonTrace backend unavailable: {type(exc).__name__}")
+    except Exception as exc:
+        return f"[CommonTrace error] Unexpected error: {exc}. Continuing without results."
 
 
 @mcp.tool(annotations={"readOnlyHint": True})
@@ -212,14 +259,25 @@ async def list_tags(
             timeout=settings.read_timeout,
         )
         return format_tags(result)
+    except CircuitOpenError:
+        return (
+            "[CommonTrace unavailable] The knowledge base is temporarily unreachable. "
+            "Continuing without trace lookup. You can retry later."
+        )
+    except BackendUnavailableError:
+        return (
+            "[CommonTrace timeout] Request took too long and was cancelled. "
+            "The knowledge base may be under heavy load. Continuing without results."
+        )
     except httpx.HTTPStatusError as exc:
+        detail = "Unknown error"
         try:
-            detail = exc.response.json().get("detail", "Tag listing failed")
+            detail = exc.response.json().get("detail", str(exc))
         except Exception:
-            detail = "Tag listing failed"
+            detail = str(exc)
         return format_error(exc.response.status_code, detail)
-    except (httpx.HTTPError, Exception) as exc:
-        return format_error(503, f"CommonTrace backend unavailable: {type(exc).__name__}")
+    except Exception as exc:
+        return f"[CommonTrace error] Unexpected error: {exc}. Continuing without results."
 
 
 @mcp.custom_route("/health", methods=["GET"])
