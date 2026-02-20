@@ -10,9 +10,9 @@ See: .planning/PROJECT.md (updated 2026-02-20)
 ## Current Position
 
 Phase: 4 of 7 (Reputation Engine) — IN PROGRESS
-Plan: 1 of 3 in current phase — complete
-Status: Phase 4 Plan 01 complete — Wilson score, ContributorDomainReputation model, migration, RequireEmail, schemas
-Last activity: 2026-02-20 — Phase 4 Plan 01 executed and committed
+Plan: 2 of 3 in current phase — complete
+Status: Phase 4 Plan 02 complete — domain vote weight, per-domain reputation UPSERT, RequireEmail on all writes, reputation endpoint
+Last activity: 2026-02-20 — Phase 4 Plan 02 executed and committed
 
 Progress: [██████░░░░] 50%
 
@@ -30,7 +30,7 @@ Progress: [██████░░░░] 50%
 | 01-data-foundation | 3 | 14 min | ~5 min |
 | 02-core-api | 4 | 16 min | ~4 min |
 | 03-search-discovery | 3/3 | 6 min | ~2 min |
-| 04-reputation-engine | 1/3 | 8 min | ~8 min |
+| 04-reputation-engine | 2/3 | 11 min | ~5.5 min |
 
 **Recent Trend:**
 - Last 5 plans: 4 min, 8 min, 3 min, 3 min, 8 min
@@ -83,6 +83,11 @@ Recent decisions affecting current work:
 - [04-01]: lazy='raise' on ContributorDomainReputation.contributor — prevents implicit async loading
 - [04-01]: RequireEmail raises 403 (not 401) — user is authenticated but lacks identity cost (email)
 - [04-01]: email-validator installed as direct uv dependency (not optional) — required for Pydantic EmailStr
+- [04-02]: get_vote_weight_for_trace uses max() across matching domain scores — best domain score wins for voter, not average
+- [04-02]: Untagged traces fall back to users.reputation_score (global Wilson score) — domain-agnostic
+- [04-02]: update_contributor_domain_reputation is no-op when domain_tags empty — no phantom rows for untagged traces
+- [04-02]: Reputation read endpoint uses CurrentUser not RequireEmail — reading is informational, not a contribution
+- [04-02]: users.reputation_score recomputed via SUM aggregation in same transaction as domain upsert — always consistent
 
 ### Pending Todos
 
@@ -97,5 +102,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 04-reputation-engine/04-01-PLAN.md — ready for Plan 04-02
+Stopped at: Completed 04-reputation-engine/04-02-PLAN.md — ready for Plan 04-03
 Resume file: None
