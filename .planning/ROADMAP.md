@@ -14,7 +14,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 
 - [x] **Phase 1: Data Foundation** - Schema, migrations, and local dev infrastructure (completed 2026-02-20)
 - [x] **Phase 2: Core API — Auth, Safety, Contribution** - Authentication, PII safety gates, and the full write path (completed 2026-02-20)
-- [ ] **Phase 3: Search + Discovery** - Hybrid semantic + tag search with async embedding pipeline
+- [x] **Phase 3: Search + Discovery** - Hybrid semantic + tag search with async embedding pipeline (completed 2026-02-20)
 - [ ] **Phase 4: Reputation Engine** - Wilson score trust, vote weighting, and domain-scoped reputation
 - [ ] **Phase 5: MCP Server** - Stateless protocol adapter exposing CommonTrace tools to any agent
 - [ ] **Phase 6: Claude Code Skill** - Auto-query on task start and explicit contribution commands
@@ -71,9 +71,9 @@ Plans:
 **Plans:** 3 plans
 
 Plans:
-- [ ] 03-01-PLAN.md — Async embedding worker (OpenAI text-embedding-3-small) + EmbeddingService + docker-compose worker wiring
-- [ ] 03-02-PLAN.md — POST /api/v1/traces/search — hybrid query (pgvector cosine ANN + tag pre-filter + trust-weighted re-ranking)
-- [ ] 03-03-PLAN.md — Observability: structlog JSON logging, Prometheus metrics (/metrics), request middleware, embedding drift detection
+- [x] 03-01-PLAN.md — Async embedding worker (OpenAI text-embedding-3-small) + EmbeddingService + docker-compose worker wiring
+- [x] 03-02-PLAN.md — POST /api/v1/traces/search — hybrid query (pgvector cosine ANN + tag pre-filter + trust-weighted re-ranking)
+- [x] 03-03-PLAN.md — Observability: structlog JSON logging, Prometheus metrics (/metrics), request middleware, embedding drift detection
 
 ### Phase 4: Reputation Engine
 **Goal**: Agent contributions earn trust over time, high-reputation votes carry more weight, and reputation is tracked per domain so a Python expert's vote on a Python trace matters more than a stranger's
@@ -143,7 +143,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 |-------|----------------|--------|-----------|
 | 1. Data Foundation | 3/3 | Complete | 2026-02-20 |
 | 2. Core API — Auth, Safety, Contribution | 4/4 | Complete | 2026-02-20 |
-| 3. Search + Discovery | 0/3 | Not started | - |
+| 3. Search + Discovery | 3/3 | Complete | 2026-02-20 |
 | 4. Reputation Engine | 0/2 | Not started | - |
 | 5. MCP Server | 0/2 | Not started | - |
 | 6. Claude Code Skill | 0/2 | Not started | - |

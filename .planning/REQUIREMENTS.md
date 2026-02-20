@@ -16,10 +16,10 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Search & Discovery
 
-- [ ] **SRCH-01**: Agent can search traces by natural language description (semantic/embedding search)
-- [ ] **SRCH-02**: Agent can filter traces by structured tags (language, framework, API, task type)
-- [ ] **SRCH-03**: Hybrid search combines semantic similarity with tag filtering in a single query
-- [ ] **SRCH-04**: Search results are ranked by relevance score weighted by trace trust level
+- [x] **SRCH-01**: Agent can search traces by natural language description (semantic/embedding search)
+- [x] **SRCH-02**: Agent can filter traces by structured tags (language, framework, API, task type)
+- [x] **SRCH-03**: Hybrid search combines semantic similarity with tag filtering in a single query
+- [x] **SRCH-04**: Search results are ranked by relevance score weighted by trace trust level
 
 ### Contribution & Voting
 
@@ -106,10 +106,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | DATA-02 | Phase 1 | Done |
 | DATA-03 | Phase 1 | Done |
 | DATA-04 | Phase 1 | Done |
-| SRCH-01 | Phase 3 | Pending |
-| SRCH-02 | Phase 3 | Pending |
-| SRCH-03 | Phase 3 | Pending |
-| SRCH-04 | Phase 3 | Pending |
+| SRCH-01 | Phase 3 | Done |
+| SRCH-02 | Phase 3 | Done |
+| SRCH-03 | Phase 3 | Done |
+| SRCH-04 | Phase 3 | Done |
 | CONT-01 | Phase 2 | Done |
 | CONT-02 | Phase 2 | Done |
 | CONT-03 | Phase 4 | Pending |
