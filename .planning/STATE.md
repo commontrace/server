@@ -5,33 +5,33 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
-**Current focus:** Phase 2, Plan 1 complete — auth/rate-limit foundation ready for write endpoints
+**Current focus:** Phase 2, Plans 01 and 02 complete — PII scanner, staleness checker, trust service, and all Pydantic schemas ready for endpoint wiring
 
 ## Current Position
 
 Phase: 2 of 7 (Core API) — IN PROGRESS
-Plan: 1 of 4 in current phase — complete
-Status: Plan 02-01 complete (2 tasks, 2 commits, all must-haves verified)
-Last activity: 2026-02-20 — Plan 02-01 executed and committed
+Plan: 2 of 4 in current phase — complete
+Status: Plan 02-02 complete (2 tasks, 2 commits, all must-haves verified)
+Last activity: 2026-02-20 — Plan 02-02 executed and committed
 
-Progress: [███░░░░░░░] 21%
+Progress: [████░░░░░░] 28%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 4
+- Total plans completed: 5
 - Average duration: ~4 min
-- Total execution time: ~17 min
+- Total execution time: ~21 min
 
 **By Phase:**
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 01-data-foundation | 3 | 14 min | ~5 min |
-| 02-core-api | 1 | 3 min | ~3 min |
+| 02-core-api | 2 | 7 min | ~3.5 min |
 
 **Recent Trend:**
-- Last 5 plans: 3 min, 3 min, 8 min, 3 min
+- Last 5 plans: 3 min, 8 min, 3 min, 4 min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -62,6 +62,11 @@ Recent decisions affecting current work:
 - [02-01]: No distinction between missing vs invalid API key in 401 — prevents key enumeration attacks
 - [02-01]: Token bucket refill rate = max_tokens/60 tokens/second; TTL = 120s (2x 60s window) for cleanup without premature expiry
 - [02-01]: require_read_limit()/require_write_limit() are factories returning callables — enables separate bucket DI per endpoint
+- [02-02]: detect-secrets enable_eager_search=False: use _scan_line directly to avoid bare-word false positives; only quoted strings and specific patterns (AWS keys, JWTs) trigger scanner
+- [02-02]: All three trace fields (title, context_text, solution_text) scanned with same detector set — simpler and more conservative; false positives better than missed leaks
+- [02-02]: Staleness comparison is major.minor only — patch releases backwards-compatible and don't invalidate trace advice
+- [02-02]: apply_vote_to_trace uses atomic column-expression UPDATE then separate SELECT for promotion check — safe under one-vote-per-trace unique DB constraint
+- [02-02]: VoteResponse.feedback_tag Optional[str]=None even though Vote model stores this in context_json — endpoint layer (02-03) handles the mapping
 
 ### Pending Todos
 
@@ -76,5 +81,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Plan 02-01 complete — CurrentUser, RedisClient, ReadRateLimit, WriteRateLimit, Amendment model ready
+Stopped at: Plan 02-02 complete — scanner.py, staleness.py, trust.py, and all Pydantic schemas ready for 02-03 endpoint wiring
 Resume file: None
