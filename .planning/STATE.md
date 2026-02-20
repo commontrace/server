@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
-**Current focus:** Phase 6 in progress — Claude Code skill layer (plan 2 of 3 complete)
+**Current focus:** Phase 7 in progress — cold start + launch hardening (plan 2 of 3 complete)
 
 ## Current Position
 
-Phase: 6 of 7 (Claude Code Skill) — IN PROGRESS
-Plan: 2 of 3 in current phase — plan 2 complete (SessionStart + Stop hooks)
-Status: Phase 06 plan 2 complete; ready for plan 3 (packaging and install docs)
-Last activity: 2026-02-20 — Phase 6 Plan 2 complete (hooks.json, session_start.py, stop.py)
+Phase: 7 of 7 (Cold Start Launch Hardening) — IN PROGRESS
+Plan: 2 of 3 in current phase — plan 2 complete (capacity test infrastructure + load tests)
+Status: Phase 07 plan 2 complete; ready for plan 3
+Last activity: 2026-02-20 — Phase 7 Plan 2 complete (generate_capacity_data.py, locustfile_capacity.py, locustfile_rate_limit.py, docker-compose.capacity.yml)
 
 Progress: [████████░░] 76%
 
@@ -39,6 +39,10 @@ Progress: [████████░░] 76%
 - Trend: Stable
 
 *Updated after each plan completion*
+
+| Phase | Plans | Total | Avg/Plan |
+|-------|-------|-------|----------|
+| 07-cold-start-launch-hardening | 1/3 | 2 min | ~2 min |
 
 ## Accumulated Context
 
@@ -105,6 +109,8 @@ Recent decisions affecting current work:
 - [Phase 06-02]: matcher=startup on SessionStart — prevents re-injection on resume/clear/compact
 - [Phase 06-02]: Stop hook uses stop_hook_active (within-cycle) + flag file at /tmp/commontrace-prompted-{session_key} (cross-response) for dual loop prevention
 - [Phase 06-02]: Session key uses session_id from payload or os.getppid() fallback — never os.getpid() (new PID per invocation)
+- [Phase 07-02]: Random tiled vectors (numpy) not OpenAI API for data generation — avoids cost, sufficient for HNSW latency benchmarking
+- [Phase 07-02]: BurstAgent marks 429 as resp.success() — 429 is expected token-bucket exhaustion, not a test failure
 
 ### Pending Todos
 
@@ -118,5 +124,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 06-02-PLAN.md — SessionStart auto-query hook + Stop contribution-prompt hook with loop prevention
+Stopped at: Completed 07-02-PLAN.md — capacity test infrastructure (data generator, Locust load tests, Docker Compose override)
 Resume file: None
