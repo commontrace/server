@@ -58,6 +58,13 @@ class Trace(Base):
     # Seed flag — seed traces are auto-validated on import (no confirmation needed)
     is_seed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
 
+    # Staleness and flagging (added in migration 0002)
+    is_stale: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_flagged: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    flagged_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
