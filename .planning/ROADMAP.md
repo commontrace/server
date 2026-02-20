@@ -17,7 +17,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 3: Search + Discovery** - Hybrid semantic + tag search with async embedding pipeline (completed 2026-02-20)
 - [x] **Phase 4: Reputation Engine** - Wilson score trust, vote weighting, and domain-scoped reputation (completed 2026-02-20)
 - [x] **Phase 5: MCP Server** - Stateless protocol adapter exposing CommonTrace tools to any agent (completed 2026-02-20)
-- [ ] **Phase 6: Claude Code Skill** - Auto-query on task start and explicit contribution commands
+- [x] **Phase 6: Claude Code Skill** - Auto-query on task start and explicit contribution commands (completed 2026-02-20)
 - [ ] **Phase 7: Cold Start + Launch Hardening** - Seed knowledge base and validate system at launch scale
 
 ## Phase Details
@@ -117,8 +117,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 06-01-PLAN.md — Plugin manifest, .mcp.json auto-configuration, /trace:search and /trace:contribute slash commands, SKILL.md
-- [ ] 06-02-PLAN.md — SessionStart hook (context detection + silent auto-query via direct API), Stop hook (post-task contribution prompt with loop prevention)
+- [x] 06-01-PLAN.md — Plugin manifest, .mcp.json auto-configuration, /trace:search and /trace:contribute slash commands, SKILL.md
+- [x] 06-02-PLAN.md — SessionStart hook (context detection + silent auto-query via direct API), Stop hook (post-task contribution prompt with loop prevention)
 
 ### Phase 7: Cold Start + Launch Hardening
 **Goal**: The knowledge base contains enough high-quality traces to deliver immediate value on first use, and the system is validated at realistic load before any public announcement
@@ -146,5 +146,5 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 3. Search + Discovery | 3/3 | Complete | 2026-02-20 |
 | 4. Reputation Engine | 2/2 | Complete | 2026-02-20 |
 | 5. MCP Server | 2/2 | Complete | 2026-02-20 |
-| 6. Claude Code Skill | 0/2 | Not started | - |
+| 6. Claude Code Skill | 2/2 | Complete | 2026-02-20 |
 | 7. Cold Start + Launch Hardening | 0/2 | Not started | - |
