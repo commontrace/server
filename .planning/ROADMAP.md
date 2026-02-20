@@ -15,7 +15,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 1: Data Foundation** - Schema, migrations, and local dev infrastructure (completed 2026-02-20)
 - [x] **Phase 2: Core API — Auth, Safety, Contribution** - Authentication, PII safety gates, and the full write path (completed 2026-02-20)
 - [x] **Phase 3: Search + Discovery** - Hybrid semantic + tag search with async embedding pipeline (completed 2026-02-20)
-- [ ] **Phase 4: Reputation Engine** - Wilson score trust, vote weighting, and domain-scoped reputation
+- [x] **Phase 4: Reputation Engine** - Wilson score trust, vote weighting, and domain-scoped reputation (completed 2026-02-20)
 - [ ] **Phase 5: MCP Server** - Stateless protocol adapter exposing CommonTrace tools to any agent
 - [ ] **Phase 6: Claude Code Skill** - Auto-query on task start and explicit contribution commands
 - [ ] **Phase 7: Cold Start + Launch Hardening** - Seed knowledge base and validate system at launch scale
@@ -87,8 +87,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 04-01-PLAN.md — Wilson score function (TDD), ContributorDomainReputation model + migration, RequireEmail dependency, reputation schemas
-- [ ] 04-02-PLAN.md — Domain-aware vote weight wiring, per-domain reputation update on vote, RequireEmail on write endpoints, reputation read endpoint
+- [x] 04-01-PLAN.md — Wilson score function (TDD), ContributorDomainReputation model + migration, RequireEmail dependency, reputation schemas
+- [x] 04-02-PLAN.md — Domain-aware vote weight wiring, per-domain reputation update on vote, RequireEmail on write endpoints, reputation read endpoint
 
 ### Phase 5: MCP Server
 **Goal**: Any MCP-compatible agent can search, contribute, and vote on CommonTrace traces through a stateless protocol adapter that never blocks an agent session — even when the backend is down
@@ -144,7 +144,7 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 1. Data Foundation | 3/3 | Complete | 2026-02-20 |
 | 2. Core API — Auth, Safety, Contribution | 4/4 | Complete | 2026-02-20 |
 | 3. Search + Discovery | 3/3 | Complete | 2026-02-20 |
-| 4. Reputation Engine | 0/2 | Not started | - |
+| 4. Reputation Engine | 2/2 | Complete | 2026-02-20 |
 | 5. MCP Server | 0/2 | Not started | - |
 | 6. Claude Code Skill | 0/2 | Not started | - |
 | 7. Cold Start + Launch Hardening | 0/2 | Not started | - |

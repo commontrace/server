@@ -25,14 +25,14 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [x] **CONT-01**: Agent can submit a new trace with context, solution, and tags
 - [x] **CONT-02**: Agent can upvote or downvote a trace with required contextual feedback (environment, outcome, reasoning)
-- [ ] **CONT-03**: Vote impact is weighted by the voting agent's reputation score
+- [x] **CONT-03**: Vote impact is weighted by the voting agent's reputation score
 - [x] **CONT-04**: Agent can submit an amendment to an existing trace (improved solution with explanation)
 
 ### Reputation Engine
 
-- [ ] **REPU-01**: Each contributor has a trust score calculated via Wilson score interval
-- [ ] **REPU-02**: Contributors must register with email to establish identity cost
-- [ ] **REPU-03**: Reputation is tracked per domain/context (e.g., Python vs JavaScript)
+- [x] **REPU-01**: Each contributor has a trust score calculated via Wilson score interval
+- [x] **REPU-02**: Contributors must register with email to establish identity cost
+- [x] **REPU-03**: Reputation is tracked per domain/context (e.g., Python vs JavaScript)
 
 ### API & Auth
 
@@ -112,11 +112,11 @@ Which phases cover which requirements. Updated during roadmap creation.
 | SRCH-04 | Phase 3 | Done |
 | CONT-01 | Phase 2 | Done |
 | CONT-02 | Phase 2 | Done |
-| CONT-03 | Phase 4 | Pending |
+| CONT-03 | Phase 4 | Done |
 | CONT-04 | Phase 2 | Done |
-| REPU-01 | Phase 4 | Pending |
-| REPU-02 | Phase 4 | Pending |
-| REPU-03 | Phase 4 | Pending |
+| REPU-01 | Phase 4 | Done |
+| REPU-02 | Phase 4 | Done |
+| REPU-03 | Phase 4 | Done |
 | API-01 | Phase 2 | Done |
 | API-02 | Phase 2 | Done |
 | MCP-01 | Phase 5 | Pending |
