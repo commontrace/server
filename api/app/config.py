@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     app_name: str = "CommonTrace"
     debug: bool = False
     embedding_dimensions: int = 1536
+    rate_limit_read_per_minute: int = 60
+    rate_limit_write_per_minute: int = 20
+    api_key_header_name: str = "X-API-Key"
 
 
 settings = Settings()

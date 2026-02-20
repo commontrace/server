@@ -3,6 +3,7 @@ from .trace import Trace, TraceStatus
 from .user import User
 from .vote import Vote, VoteType
 from .tag import Tag, trace_tags
+from .amendment import Amendment
 
 __all__ = [
     "Base",
@@ -13,4 +14,5 @@ __all__ = [
     "VoteType",
     "Tag",
     "trace_tags",
+    "Amendment",
 ]

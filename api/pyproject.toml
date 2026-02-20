@@ -13,13 +13,16 @@ dependencies = [
     "pydantic-settings>=2.0.0",
     "python-dotenv",
     "structlog",
+    "redis>=5.0",
+    "detect-secrets>=1.5.0",
+    "packaging>=23.0",
+    "httpx>=0.27",
 ]
 
 [project.optional-dependencies]
 dev = [
     "pytest",
     "pytest-asyncio",
-    "httpx",
     "factory-boy",
     "ruff",
     "mypy",
