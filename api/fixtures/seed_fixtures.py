@@ -18,7 +18,7 @@ from pathlib import Path
 from sqlalchemy import select
 
 from app.database import async_session_factory
-from app.models.tag import Tag
+from app.models.tag import Tag, trace_tags
 from app.models.trace import Trace, TraceStatus
 from app.models.user import User
 from app.services.tags import normalize_tag
@@ -106,10 +106,13 @@ async def seed() -> None:
             # Flush to get trace ID before adding tags
             await session.flush()
 
-            # Add normalized tags
+            # Add normalized tags via direct insert into join table
+            # (avoids lazy-load on trace.tags which fails in async context)
             for raw_tag in fixture.get("tags", []):
                 tag = await get_or_create_tag(session, raw_tag)
-                trace.tags.append(tag)
+                await session.execute(
+                    trace_tags.insert().values(trace_id=trace.id, tag_id=tag.id)
+                )
                 tag_names_created.add(tag.name)
 
             trace_count += 1
