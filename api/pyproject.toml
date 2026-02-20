@@ -41,5 +41,7 @@ packages = ["app"]
 
 [dependency-groups]
 dev = [
+    "faker>=40.4.0",
+    "locust>=2.43.3",
     "pytest>=9.0.2",
 ]
