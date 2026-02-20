@@ -5,21 +5,21 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
-**Current focus:** Phase 2 complete — ready for Phase 3
+**Current focus:** Phase 3 in progress — Plan 01 complete (embedding worker)
 
 ## Current Position
 
-Phase: 2 of 7 (Core API) — COMPLETE
-Plan: 4 of 4 in current phase — all verified
-Status: Phase 2 complete, verification passed (9/10 must-haves; CONT-03 moved to Phase 4)
-Last activity: 2026-02-20 — Phase 2 verified and marked complete
+Phase: 3 of 7 (Search Discovery) — IN PROGRESS
+Plan: 1 of 3 in current phase — complete
+Status: Phase 3 Plan 01 complete — EmbeddingService and worker loop built and committed
+Last activity: 2026-02-20 — Phase 3 Plan 01 executed
 
-Progress: [████░░░░░░] 29%
+Progress: [████░░░░░░] 33%
 
 ## Performance Metrics
 
 **Velocity:**
-- Total plans completed: 7
+- Total plans completed: 8
 - Average duration: ~4 min
 - Total execution time: ~30 min
 
@@ -29,9 +29,10 @@ Progress: [████░░░░░░] 29%
 |-------|-------|-------|----------|
 | 01-data-foundation | 3 | 14 min | ~5 min |
 | 02-core-api | 4 | 16 min | ~4 min |
+| 03-search-discovery | 1/3 | 3 min | ~3 min |
 
 **Recent Trend:**
-- Last 5 plans: 8 min, 3 min, 4 min, 8 min, 3 min
+- Last 5 plans: 3 min, 4 min, 8 min, 3 min, 3 min
 - Trend: Stable
 
 *Updated after each plan completion*
@@ -65,6 +66,10 @@ Recent decisions affecting current work:
 - [02-04]: Hard-delete for moderation (no soft-delete in v1)
 - [02-04]: Any authenticated user can moderate (role-gating deferred)
 - [Verification]: CONT-03 moved from Phase 2 to Phase 4 — reputation computation is Phase 4 concern
+- [03-01]: No sentence-transformers local fallback — EmbeddingSkippedError raised when no API key; traces stay NULL
+- [03-01]: Lazy-init AsyncOpenAI client — created only on first embed() call
+- [03-01]: Worker depends only on postgres+redis in docker-compose (not api service)
+- [03-01]: alembic upgrade head runs in worker entrypoint to handle migration race
 
 ### Pending Todos
 
@@ -79,5 +84,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Phase 2 complete and verified — ready for /gsd:plan-phase 3
+Stopped at: Completed 03-search-discovery 03-01-PLAN.md — ready for Plan 03-02 (semantic search endpoint)
 Resume file: None
