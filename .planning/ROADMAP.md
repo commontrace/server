@@ -99,11 +99,11 @@ Plans:
   2. When the CommonTrace backend is unavailable or times out, the MCP server returns a graceful degradation message — the agent session continues without error or hang
   3. The MCP server is accessible via Streamable HTTP transport for remote agents and via stdio transport for local development — both work without code changes to the backend
   4. API key credentials are injected from MCP client configuration — they never appear as tool call parameters visible to agent prompts
-**Plans**: TBD
+**Plans:** 2 plans
 
 Plans:
-- [ ] 05-01: FastMCP server with Streamable HTTP and stdio transport; search_traces, contribute_trace, vote_trace, get_trace, list_tags tool definitions
-- [ ] 05-02: Circuit-breaker pattern (200ms auto-query SLA, 2s contribution SLA); graceful degradation messages; API key injection from client config
+- [ ] 05-01-PLAN.md — FastMCP 3.0.0 server with 5 tool definitions (search_traces, contribute_trace, vote_trace, get_trace, list_tags), backend HTTP client, response formatters, GET /api/v1/tags endpoint, Docker Compose service
+- [ ] 05-02-PLAN.md — Custom circuit breaker (closed/open/half-open), per-operation SLA timeouts (200ms read, 2s write), graceful degradation messages in all tools, API key injection via CurrentHeaders() + env var fallback
 
 ### Phase 6: Claude Code Skill
 **Goal**: Claude Code agents benefit from CommonTrace automatically during every session and can contribute knowledge explicitly — without CommonTrace ever blocking their work or polluting the knowledge base with unreviewed contributions
@@ -145,6 +145,6 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 2. Core API — Auth, Safety, Contribution | 4/4 | Complete | 2026-02-20 |
 | 3. Search + Discovery | 3/3 | Complete | 2026-02-20 |
 | 4. Reputation Engine | 2/2 | Complete | 2026-02-20 |
-| 5. MCP Server | 0/2 | Not started | - |
+| 5. MCP Server | 0/2 | Planned | - |
 | 6. Claude Code Skill | 0/2 | Not started | - |
 | 7. Cold Start + Launch Hardening | 0/2 | Not started | - |
