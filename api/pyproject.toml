@@ -17,6 +17,9 @@ dependencies = [
     "detect-secrets>=1.5.0",
     "packaging>=23.0",
     "httpx>=0.27",
+    "openai>=1.0",
+    "sentence-transformers>=3.0",
+    "prometheus-client>=0.20",
 ]
 
 [project.optional-dependencies]

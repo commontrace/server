@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     rate_limit_read_per_minute: int = 60
     rate_limit_write_per_minute: int = 20
     api_key_header_name: str = "X-API-Key"
+    openai_api_key: str = ""
 
 
 settings = Settings()
