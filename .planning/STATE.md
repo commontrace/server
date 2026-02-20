@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
-**Current focus:** Phase 3 in progress — Plan 02 complete (hybrid search endpoint)
+**Current focus:** Phase 3 complete — all 3 plans executed (embedding worker, hybrid search, observability)
 
 ## Current Position
 
-Phase: 3 of 7 (Search Discovery) — IN PROGRESS
-Plan: 2 of 3 in current phase — complete
-Status: Phase 3 Plan 02 complete — Hybrid search endpoint (POST /api/v1/traces/search) built and committed
-Last activity: 2026-02-20 — Phase 3 Plan 02 executed
+Phase: 3 of 7 (Search Discovery) — COMPLETE
+Plan: 3 of 3 in current phase — complete
+Status: Phase 3 Plan 03 complete — Observability layer (structlog JSON + Prometheus metrics + /metrics endpoint) wired
+Last activity: 2026-02-20 — Phase 3 Plan 03 executed
 
 Progress: [█████░░░░░] 43%
 
@@ -29,7 +29,7 @@ Progress: [█████░░░░░] 43%
 |-------|-------|-------|----------|
 | 01-data-foundation | 3 | 14 min | ~5 min |
 | 02-core-api | 4 | 16 min | ~4 min |
-| 03-search-discovery | 2/3 | 4 min | ~2 min |
+| 03-search-discovery | 3/3 | 6 min | ~2 min |
 
 **Recent Trend:**
 - Last 5 plans: 3 min, 4 min, 8 min, 3 min, 3 min
@@ -74,6 +74,9 @@ Recent decisions affecting current work:
 - [03-02]: GROUP BY uses full cosine_distance expression not alias (PostgreSQL requires expression, not SELECT alias)
 - [03-02]: Tag-only search sets similarity_score=0.0, combined_score=trust_score — no semantic ranking
 - [03-02]: 503 only in semantic mode when OPENAI_API_KEY absent; tag-only never 503s
+- [03-03]: Search metrics kept in routers/search.py (Plan 03-02) — not moved to metrics.py to avoid prometheus_client duplicate registration errors
+- [03-03]: configure_logging() called independently in API lifespan and worker run_worker() — each process configures structlog separately
+- [03-03]: Drift detection runs once at worker startup via single GROUP BY query, not per-batch
 
 ### Pending Todos
 
@@ -88,5 +91,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-20
-Stopped at: Completed 03-search-discovery 03-02-PLAN.md — ready for Plan 03-03 (observability / metrics consolidation)
+Stopped at: Completed 03-search-discovery 03-03-PLAN.md — Phase 3 complete, ready for Phase 4 (reputation engine)
 Resume file: None
