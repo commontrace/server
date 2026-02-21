@@ -7,6 +7,7 @@ COPY frontend/pyproject.toml .
 RUN pip install --no-cache-dir .
 
 COPY frontend/build.py .
+COPY frontend/translations.json translations.json
 COPY frontend/templates/ templates/
 COPY frontend/static/ static/
 COPY api/fixtures/seed_traces.json seed_traces.json
