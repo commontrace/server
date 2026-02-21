@@ -19,7 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: MCP Server** - Stateless protocol adapter exposing CommonTrace tools to any agent (completed 2026-02-20)
 - [x] **Phase 6: Claude Code Skill** - Auto-query on task start and explicit contribution commands (completed 2026-02-20)
 - [x] **Phase 7: Cold Start + Launch Hardening** - Seed knowledge base and validate system at launch scale (completed 2026-02-21)
-- [ ] **Phase 8: Tech Debt Cleanup** - Close audit gaps: MCP amendment tool, explicit deps, dead code, Docker healthcheck, docs
+- [x] **Phase 8: Tech Debt Cleanup** - Close audit gaps: MCP amendment tool, explicit deps, dead code, Docker healthcheck, docs (completed 2026-02-21)
 
 ## Phase Details
 
@@ -150,8 +150,8 @@ Plans:
 **Plans:** 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — MCP server fixes: amend_trace tool, httpx explicit dependency, circuit breaker coroutine warning fix
-- [ ] 08-02-PLAN.md — API cleanup, Docker healthcheck, and documentation: dead code removal, Alembic imports, stale docstring, healthcheck, README + .env.example
+- [x] 08-01-PLAN.md — MCP server fixes: amend_trace tool, httpx explicit dependency, circuit breaker coroutine warning fix
+- [x] 08-02-PLAN.md — API cleanup, Docker healthcheck, and documentation: dead code removal, Alembic imports, stale docstring, healthcheck, README + .env.example
 
 ## Progress
 
@@ -167,4 +167,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 5. MCP Server | 2/2 | Complete | 2026-02-20 |
 | 6. Claude Code Skill | 2/2 | Complete | 2026-02-20 |
 | 7. Cold Start + Launch Hardening | 2/2 | Complete | 2026-02-21 |
-| 8. Tech Debt Cleanup | 0/2 | Planned | — |
+| 8. Tech Debt Cleanup | 2/2 | Complete | 2026-02-21 |
