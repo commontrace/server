@@ -43,7 +43,8 @@ Progress: [██████████] 100%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 07-cold-start-launch-hardening | 2/2 | 40 min | ~20 min |
-| Phase 08-tech-debt-cleanup P02 | 2 | 3 tasks | 6 files |
+| 08-tech-debt-cleanup P01 | 2 tasks | ~3 min | ~1.5 min |
+| 08-tech-debt-cleanup P02 | 3 tasks | ~5 min | ~2.5 min |
 
 ## Accumulated Context
 
@@ -115,6 +116,9 @@ Recent decisions affecting current work:
 - [Phase 07-01]: import_seeds.py uses standalone create_async_engine (not app.database) — runs independently without FastAPI app
 - [Phase 07-01]: Seed user email seeds@commontrace.internal (distinct from seed@commontrace.dev used by seed_fixtures.py)
 - [Phase 07-01]: Idempotency check: title + is_seed IS TRUE — avoids false match against real user's trace with same title
+- [Phase 08-01]: CircuitBreaker.call() takes coro_factory (callable) not coro (coroutine) — prevents unawaited coroutine creation when circuit is open
+- [Phase 08-01]: httpx declared as explicit dependency (>=0.27) — not relying on transitive availability through fastmcp
+- [Phase 08-01]: amend_trace follows vote_trace pattern exactly: readOnlyHint False, write_timeout, same error handling structure
 - [Phase 08-02]: Use python3 urllib in Docker healthcheck — curl not guaranteed in Python base images
 - [Phase 08-02]: mcp-server upgraded from service_started to service_healthy — ensures API ready before MCP connects
 - [Phase 08-02]: OPENAI_API_KEY and COMMONTRACE_API_KEY commented out in .env.example — secrets must be explicitly set
@@ -131,5 +135,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: Completed 08-02-PLAN.md
+Stopped at: Completed 08-01-PLAN.md
 Resume file: None
