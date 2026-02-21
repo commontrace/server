@@ -147,10 +147,11 @@ Plans:
   4. The normalize_tags (plural) dead code is removed from tags.py — only normalize_tag (singular) remains
   5. README.md and .env.example clearly document OPENAI_API_KEY and COMMONTRACE_API_KEY as required configuration with explanation of degraded behavior when absent
   6. Docker Compose api service has a healthcheck so mcp-server can use service_healthy dependency condition
-**Plans:** 1 plan
+**Plans:** 2 plans
 
 Plans:
-- [ ] 08-01-PLAN.md — Tech debt cleanup: MCP amendment tool, explicit deps, dead code removal, Docker healthcheck, documentation fixes
+- [ ] 08-01-PLAN.md — MCP server fixes: amend_trace tool, httpx explicit dependency, circuit breaker coroutine warning fix
+- [ ] 08-02-PLAN.md — API cleanup, Docker healthcheck, and documentation: dead code removal, Alembic imports, stale docstring, healthcheck, README + .env.example
 
 ## Progress
 
@@ -166,4 +167,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 | 5. MCP Server | 2/2 | Complete | 2026-02-20 |
 | 6. Claude Code Skill | 2/2 | Complete | 2026-02-20 |
 | 7. Cold Start + Launch Hardening | 2/2 | Complete | 2026-02-21 |
-| 8. Tech Debt Cleanup | 0/1 | Planned | — |
+| 8. Tech Debt Cleanup | 0/2 | Planned | — |
