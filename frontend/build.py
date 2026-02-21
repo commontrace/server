@@ -20,6 +20,12 @@ TEMPLATES_DIR = Path("templates")
 STATIC_DIR = Path("static")
 OUT_DIR = Path("_site")
 
+# Primary languages/frameworks for homepage stats
+TOP_LANGUAGES = [
+    "python", "typescript", "javascript", "react", "fastapi", "next.js",
+    "docker", "postgresql", "redis", "vue", "go", "rust",
+]
+
 
 def slugify(title: str) -> str:
     slug = re.sub(r"[^a-z0-9\s-]", "", title.lower().strip())
@@ -71,39 +77,42 @@ def build():
 
     all_tags_sorted = tag_counts.most_common()
 
+    # Detect top languages present in tags
+    top_languages = [lang for lang in TOP_LANGUAGES if lang in tag_counts]
+
     # Jinja2 setup
     env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=False)
     env.globals["all_tags"] = all_tags_sorted
     env.globals["total_traces"] = len(traces)
 
-    # Pygments CSS (monokai-inspired dark theme)
-    formatter = HtmlFormatter(style="monokai")
+    # Pygments CSS (light theme for Wikipedia-style)
+    formatter = HtmlFormatter(style="friendly")
     pygments_css = formatter.get_style_defs(".highlight")
-
-    # Search index (lightweight JSON for client-side search)
-    search_index = json.dumps(
-        [
-            {
-                "title": t["title"],
-                "slug": t["slug"],
-                "tags": t["tags"],
-                "excerpt": t["context"][:200],
-            }
-            for t in traces
-        ]
-    )
 
     # Clean output
     if OUT_DIR.exists():
         shutil.rmtree(OUT_DIR)
     OUT_DIR.mkdir(parents=True)
 
-    # Generate index page
-    tpl = env.get_template("index.html")
+    # Generate homepage
+    home_tpl = env.get_template("home.html")
     (OUT_DIR / "index.html").write_text(
-        tpl.render(traces=traces, search_index=search_index, page_title="CommonTrace")
+        home_tpl.render(
+            recent_traces=traces[:10],
+            top_languages=top_languages,
+            page_title="CommonTrace — The AI Knowledge Base",
+        )
     )
-    print("Generated index.html")
+    print("Generated homepage")
+
+    # Generate browse/all traces page
+    browse_tpl = env.get_template("index.html")
+    browse_dir = OUT_DIR / "browse"
+    browse_dir.mkdir(parents=True, exist_ok=True)
+    (browse_dir / "index.html").write_text(
+        browse_tpl.render(traces=traces, page_title="All traces — CommonTrace")
+    )
+    print("Generated browse page")
 
     # Generate individual trace pages
     trace_tpl = env.get_template("trace.html")

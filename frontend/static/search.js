@@ -7,7 +7,7 @@
 
   if (!input || !traceList) return;
 
-  const cards = Array.from(traceList.querySelectorAll('.trace-card'));
+  const cards = Array.from(traceList.querySelectorAll('.trace-item'));
   const totalCount = cards.length;
 
   // Tag sidebar filtering
