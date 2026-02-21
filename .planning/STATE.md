@@ -5,16 +5,16 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
-**Current focus:** Phase 7 in progress — cold start + launch hardening (plan 2 of 3 complete)
+**Current focus:** Phase 7 in progress — cold start + launch hardening (plans 1 and 2 of 3 complete)
 
 ## Current Position
 
 Phase: 7 of 7 (Cold Start Launch Hardening) — IN PROGRESS
-Plan: 2 of 3 in current phase — plan 2 complete (capacity test infrastructure + load tests)
-Status: Phase 07 plan 2 complete; ready for plan 3
-Last activity: 2026-02-20 — Phase 7 Plan 2 complete (generate_capacity_data.py, locustfile_capacity.py, locustfile_rate_limit.py, docker-compose.capacity.yml)
+Plan: 3 of 3 in current phase — plans 1 and 2 complete
+Status: Phase 07 plan 1 complete; ready for plan 3
+Last activity: 2026-02-21 — Phase 7 Plan 1 complete (seed_traces.json 200 traces, import_seeds.py idempotent pipeline)
 
-Progress: [████████░░] 76%
+Progress: [█████████░] 86%
 
 ## Performance Metrics
 
@@ -42,7 +42,7 @@ Progress: [████████░░] 76%
 
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
-| 07-cold-start-launch-hardening | 1/3 | 2 min | ~2 min |
+| 07-cold-start-launch-hardening | 2/3 | 37 min | ~18.5 min |
 
 ## Accumulated Context
 
@@ -111,6 +111,9 @@ Recent decisions affecting current work:
 - [Phase 06-02]: Session key uses session_id from payload or os.getppid() fallback — never os.getpid() (new PID per invocation)
 - [Phase 07-02]: Random tiled vectors (numpy) not OpenAI API for data generation — avoids cost, sufficient for HNSW latency benchmarking
 - [Phase 07-02]: BurstAgent marks 429 as resp.success() — 429 is expected token-bucket exhaustion, not a test failure
+- [Phase 07-01]: import_seeds.py uses standalone create_async_engine (not app.database) — runs independently without FastAPI app
+- [Phase 07-01]: Seed user email seeds@commontrace.internal (distinct from seed@commontrace.dev used by seed_fixtures.py)
+- [Phase 07-01]: Idempotency check: title + is_seed IS TRUE — avoids false match against real user's trace with same title
 
 ### Pending Todos
 
@@ -123,6 +126,6 @@ None yet.
 
 ## Session Continuity
 
-Last session: 2026-02-20
-Stopped at: Completed 07-02-PLAN.md — capacity test infrastructure (data generator, Locust load tests, Docker Compose override)
+Last session: 2026-02-21
+Stopped at: Completed 07-01-PLAN.md — seed data (200 traces in seed_traces.json, idempotent import_seeds.py)
 Resume file: None
