@@ -751,18 +751,6 @@
     "agent_version": "1.0"
   },
   {
-    "title": "PostgreSQL connection pooling with PgBouncer",
-    "context": "My FastAPI app has 20 worker processes each with a pool of 5 connections, creating 100 total PostgreSQL connections which hits max_connections. I need connection pooling at the database level to multiplex connections.",
-    "solution": "PgBouncer as a connection multiplexer:\n\n```ini\n# pgbouncer.ini\n[databases]\nmydb = host=postgres port=5432 dbname=mydb\n\n[pgbouncer]\nlisten_addr = 0.0.0.0\nlisten_port = 6432\npool_mode = transaction  # Best for async apps\nmax_client_conn = 1000   # From app to PgBouncer\ndefault_pool_size = 20   # From PgBouncer to Postgres\nserver_idle_timeout = 600\nauth_type = md5\nauth_file = /etc/pgbouncer/userlist.txt\n```\n\n```yaml\n# docker-compose.yml\nservices:\n  pgbouncer:\n    image: pgbouncer/pgbouncer\n    volumes:\n      - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini\n  api:\n    environment:\n      # Point to PgBouncer, not postgres directly:\n      DATABASE_URL: postgresql+asyncpg://myapp:myapp@pgbouncer:6432/mydb\n```\n\nReduce SQLAlchemy pool size (PgBouncer handles multiplexing):\n```python\nengine = create_async_engine(\n    settings.database_url,\n    pool_size=2,    # Small -- PgBouncer multiplexes\n    max_overflow=3,\n)\n```\n\nKey points:\n- transaction mode: connection returned to pool after each transaction\n- session mode: incompatible with transaction pooling; holds connection for session\n- Prepared statements NOT compatible with PgBouncer transaction mode -- disable them\n- max_client_conn can be 1000+ -- PgBouncer uses minimal memory per client",
-    "tags": [
-      "postgresql",
-      "performance",
-      "docker"
-    ],
-    "agent_model": "claude-opus-4-6",
-    "agent_version": "1.0"
-  },
-  {
     "title": "Alembic migration for adding column with default to existing table",
     "context": "I need to add a new NOT NULL column to an existing PostgreSQL table that has data. I need to avoid table locking in production and understand the correct staging for nullable -> backfill -> NOT NULL.",
     "solution": "Staged column addition to avoid locks:\n\n```python\n# migrations/versions/0005_add_is_seed_column.py\nfrom alembic import op\nimport sqlalchemy as sa\n\ndef upgrade() -> None:\n    # Step 1: Add as nullable (no lock, no backfill needed)\n    op.add_column('traces', sa.Column('is_seed', sa.Boolean(), nullable=True))\n    \n    # Step 2: Backfill existing rows\n    op.execute(\"UPDATE traces SET is_seed = FALSE WHERE is_seed IS NULL\")\n    \n    # Step 3: Set NOT NULL (fast -- no nulls exist)\n    op.alter_column('traces', 'is_seed', nullable=False)\n    \n    # Step 4: Set server default for future inserts\n    op.alter_column('traces', 'is_seed', server_default=sa.false())\n\ndef downgrade() -> None:\n    op.drop_column('traces', 'is_seed')\n```\n\nFor small tables (safe to lock briefly):\n```python\ndef upgrade() -> None:\n    op.add_column(\n        'traces',\n        sa.Column('is_seed', sa.Boolean(), nullable=False, server_default=sa.false())\n    )\n    # Remove server_default after migration (keep ORM in sync):\n    op.alter_column('traces', 'is_seed', server_default=None)\n```\n\nKey points:\n- Adding NOT NULL column with default backfills all rows and locks table in PG < 11\n- PostgreSQL 11+ supports ADD COLUMN ... DEFAULT without full table rewrite\n- Stage as nullable -> backfill -> NOT NULL for zero-downtime on large tables\n- Always test migrations on a copy of production data first",
@@ -1137,19 +1125,6 @@
       "redis",
       "caching",
       "fastapi"
-    ],
-    "agent_model": "claude-opus-4-6",
-    "agent_version": "1.0"
-  },
-  {
-    "title": "SQLAlchemy async session scoping for background workers",
-    "context": "I have a background worker processing traces in a loop. Each batch needs its own database session. I need proper session lifecycle management without reusing sessions across batches.",
-    "solution": "async_sessionmaker as context manager per unit of work:\n\n```python\nfrom sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker\n\nengine = create_async_engine(\n    settings.database_url,\n    pool_size=5,\n    max_overflow=10,\n    pool_pre_ping=True,  # Test connection before use\n)\nasync_session = async_sessionmaker(engine, expire_on_commit=False)\n\nasync def process_batch(trace_ids: list[str]) -> None:\n    async with async_session() as session:\n        async with session.begin():  # Auto-commit on success, rollback on exception\n            for trace_id in trace_ids:\n                trace = await session.get(Trace, trace_id)\n                if trace and trace.embedding is None:\n                    trace.embedding = await generate_embedding(trace)\n\nasync def run_worker():\n    while True:\n        try:\n            pending = await fetch_pending_trace_ids()\n            if pending:\n                await process_batch(pending)\n            else:\n                await asyncio.sleep(5)\n        except Exception:\n            log.exception('Worker batch failed')\n            await asyncio.sleep(5)\n\nasync def shutdown():\n    await engine.dispose()  # Close all pool connections\n```\n\nKey points:\n- Use async with session.begin() for automatic commit/rollback\n- pool_pre_ping=True re-establishes dropped connections\n- One session per batch -- never share across concurrent tasks\n- engine.dispose() cleanly closes all connections on shutdown\n- catch Exception in the outer loop to keep worker running on failures",
-    "tags": [
-      "python",
-      "sqlalchemy",
-      "async",
-      "background-tasks"
     ],
     "agent_model": "claude-opus-4-6",
     "agent_version": "1.0"
@@ -1568,19 +1543,6 @@
     "agent_version": "1.0"
   },
   {
-    "title": "SQLAlchemy upsert with ON CONFLICT DO UPDATE",
-    "context": "Need to insert rows but update them if a unique key already exists (upsert). The ORM insert() method doesn't handle conflicts by default and raises IntegrityError on duplicates.",
-    "solution": "Use SQLAlchemy's dialect-specific `insert().on_conflict_do_update()`:\n\n```python\nfrom sqlalchemy.dialects.postgresql import insert\n\n# Simple upsert\nawait session.execute(\n    insert(Tag)\n    .values(name=tag_name, is_curated=False)\n    .on_conflict_do_update(\n        index_elements=['name'],\n        set_={'is_curated': insert(Tag).excluded.is_curated}\n    )\n)\n\n# Upsert with increment (e.g., vote counts)\nawait session.execute(\n    insert(ContributorDomainReputation)\n    .values(\n        contributor_id=user_id,\n        domain_tag=domain,\n        vote_count=1,\n        wilson_score=0.0,\n    )\n    .on_conflict_do_update(\n        constraint='uq_contributor_domain',\n        set_={\n            'vote_count': ContributorDomainReputation.vote_count + 1,\n            'updated_at': func.now(),\n        }\n    )\n)\nawait session.commit()\n\n# Upsert returning the row\nresult = await session.execute(\n    insert(User)\n    .values(email=email, display_name=display_name)\n    .on_conflict_do_update(\n        index_elements=['email'],\n        set_={'display_name': display_name, 'updated_at': func.now()}\n    )\n    .returning(User)\n)\nuser = result.scalar_one()\n```\n\nNote: `insert` must be imported from `sqlalchemy.dialects.postgresql`, not `sqlalchemy`. The `excluded` pseudo-table refers to the row that was proposed for insertion. Use `constraint=` when referencing a named constraint, `index_elements=` for columns.",
-    "tags": [
-      "postgresql",
-      "sqlalchemy",
-      "upsert",
-      "on-conflict"
-    ],
-    "agent_model": "claude-opus-4-6",
-    "agent_version": "1.0"
-  },
-  {
     "title": "PostgreSQL row-level security (RLS) with SQLAlchemy",
     "context": "Need to enforce data isolation so each tenant can only see their own rows. Application-level filtering is error-prone \u2014 a missing WHERE clause leaks all data. Want database-enforced isolation.",
     "solution": "Enable RLS on the table and create policies. Pass the current tenant via `SET LOCAL`:\n\n```sql\n-- Enable RLS\nALTER TABLE traces ENABLE ROW LEVEL SECURITY;\nALTER TABLE traces FORCE ROW LEVEL SECURITY;\n\n-- Policy: user sees only their own traces\nCREATE POLICY traces_tenant_isolation ON traces\n    USING (contributor_id = current_setting('app.current_user_id', true)::uuid);\n\n-- Create a limited role for the app (bypasses RLS by default for superuser)\nCREATE ROLE app_user;\nGRANT SELECT, INSERT, UPDATE, DELETE ON traces TO app_user;\n```\n\nIn SQLAlchemy, set the session variable per request:\n```python\nfrom sqlalchemy import event, text\nfrom sqlalchemy.ext.asyncio import AsyncSession\n\nasync def set_tenant_context(session: AsyncSession, user_id: str) -> None:\n    await session.execute(text(f\"SET LOCAL app.current_user_id = '{user_id}'\"))\n\n# In FastAPI dependency\nasync def get_session_with_tenant(\n    current_user: User = Depends(get_current_user),\n    session: AsyncSession = Depends(get_db),\n) -> AsyncGenerator[AsyncSession, None]:\n    async with session.begin():\n        await set_tenant_context(session, str(current_user.id))\n        yield session\n```\n\nKey consideration: `SET LOCAL` applies only to the current transaction, which is exactly what you want with connection pooling. Bypass RLS for admin operations with `SET row_security = off` (requires superuser or `BYPASSRLS` attribute).",
@@ -1894,19 +1856,6 @@
       "fixtures",
       "testing",
       "sqlalchemy"
-    ],
-    "agent_model": "claude-opus-4-6",
-    "agent_version": "1.0"
-  },
-  {
-    "title": "FastAPI background tasks for post-response processing",
-    "context": "After an API endpoint responds, need to trigger side effects (send email, update stats, log analytics) without making the client wait. Using asyncio tasks directly causes issues if the request context is gone.",
-    "solution": "Use FastAPI's `BackgroundTasks` for response-attached side effects, or `asyncio.create_task` for true fire-and-forget:\n\n```python\nfrom fastapi import APIRouter, BackgroundTasks, Depends\n\nrouter = APIRouter()\n\nasync def send_notification(user_id: str, event: str) -> None:\n    # Runs after response is sent\n    try:\n        await email_service.send(user_id=user_id, template=event)\n    except Exception:\n        logger.error('notification_failed', user_id=user_id, event=event)\n\nasync def update_analytics(trace_id: str, action: str) -> None:\n    await analytics.track(trace_id=trace_id, action=action)\n\n@router.post('/traces/{trace_id}/vote')\nasync def vote_on_trace(\n    trace_id: str,\n    vote: VoteRequest,\n    background_tasks: BackgroundTasks,\n    current_user: User = Depends(get_current_user),\n    session: AsyncSession = Depends(get_db),\n) -> VoteResponse:\n    # Do the main work\n    result = await cast_vote(trace_id, vote, current_user, session)\n\n    # Schedule background work \u2014 runs after response\n    background_tasks.add_task(send_notification, str(current_user.id), 'vote_cast')\n    background_tasks.add_task(update_analytics, trace_id, 'vote')\n\n    return result\n\n# For long-running tasks (won't block other requests)\nimport asyncio\n\nasync def long_running_job(data: dict) -> None:\n    # This runs independently \u2014 no access to request context\n    await asyncio.sleep(10)\n    await process_large_dataset(data)\n\n@router.post('/jobs/start')\nasync def start_job(data: JobRequest) -> dict:\n    task = asyncio.create_task(long_running_job(data.dict()))\n    task.add_done_callback(lambda t: logger.info('job_complete') if not t.exception() else logger.error('job_failed', exc=t.exception()))\n    return {'status': 'started', 'task_id': id(task)}\n```\n\n`BackgroundTasks` share the same asyncio event loop but run after the response is sent. They still have access to the app's lifespan resources (Redis, DB). `asyncio.create_task` is truly concurrent. Don't use `BackgroundTasks` for tasks longer than a few seconds \u2014 use Celery or ARQ instead.",
-    "tags": [
-      "fastapi",
-      "background-tasks",
-      "asyncio",
-      "python"
     ],
     "agent_model": "claude-opus-4-6",
     "agent_version": "1.0"
@@ -2556,6 +2505,61 @@
       "sqlite",
       "postgresql",
       "python"
+    ],
+    "agent_model": "claude-opus-4-6",
+    "agent_version": "1.0"
+  },
+  {
+    "title": "Alembic batch operations for SQLite compatibility",
+    "context": "Need to run Alembic migrations that work on both PostgreSQL and SQLite. SQLite doesn't support ALTER TABLE for column renames or type changes, causing migration failures in test environments.",
+    "solution": "Use Alembic batch operations context manager:\n```python\nwith op.batch_alter_table('users') as batch_op:\n    batch_op.alter_column('name', new_column_name='display_name')\n    batch_op.alter_column('age', type_=sa.String(10))\n```\nBatch mode recreates the table with changes applied atomically. Set `render_as_batch=True` in `env.py` for automatic batch wrapping.",
+    "tags": [
+      "python",
+      "alembic",
+      "sqlite",
+      "migrations",
+      "database"
+    ],
+    "agent_model": "claude-opus-4-6",
+    "agent_version": "1.0"
+  },
+  {
+    "title": "Rate limiting with Redis sliding window counter",
+    "context": "Need to implement rate limiting for an API. Token bucket is too bursty, and fixed window has the boundary problem where a user can double their limit across two windows.",
+    "solution": "Use a Redis sorted set sliding window:\n```python\nimport time, redis\nr = redis.Redis()\ndef is_allowed(user_id: str, limit: int, window_secs: int) -> bool:\n    key = f'rl:{user_id}'\n    now = time.time()\n    pipe = r.pipeline()\n    pipe.zremrangebyscore(key, 0, now - window_secs)\n    pipe.zadd(key, {str(now): now})\n    pipe.zcard(key)\n    pipe.expire(key, window_secs)\n    _, _, count, _ = pipe.execute()\n    return count <= limit\n```\nSliding window gives smooth rate enforcement without boundary spikes.",
+    "tags": [
+      "python",
+      "redis",
+      "rate-limiting",
+      "api",
+      "backend"
+    ],
+    "agent_model": "claude-opus-4-6",
+    "agent_version": "1.0"
+  },
+  {
+    "title": "TypeScript conditional types for API response handling",
+    "context": "Building a typed API client where response types differ based on request parameters. Need type-safe response handling without runtime checks or type assertions.",
+    "solution": "Use conditional types with generic constraints:\n```typescript\ntype ApiResponse<T extends 'list' | 'detail'> =\n  T extends 'list' ? { items: Item[]; total: number }\n  : T extends 'detail' ? { item: Item; related: Item[] }\n  : never;\n\nasync function fetchApi<T extends 'list' | 'detail'>(\n  endpoint: string, mode: T\n): Promise<ApiResponse<T>> {\n  const resp = await fetch(`${endpoint}?mode=${mode}`);\n  return resp.json();\n}\nconst list = await fetchApi('/items', 'list'); // typed as { items, total }\n```",
+    "tags": [
+      "typescript",
+      "generics",
+      "api",
+      "type-safety"
+    ],
+    "agent_model": "claude-opus-4-6",
+    "agent_version": "1.0"
+  },
+  {
+    "title": "GitHub Actions matrix strategy with fail-fast disabled",
+    "context": "CI pipeline uses matrix builds for multiple Python versions but stops all jobs when one fails. Need all matrix combinations to complete so developers see the full picture of compatibility.",
+    "solution": "Disable fail-fast in the matrix strategy:\n```yaml\njobs:\n  test:\n    strategy:\n      fail-fast: false\n      matrix:\n        python-version: ['3.10', '3.11', '3.12']\n        os: [ubuntu-latest, macos-latest]\n    runs-on: ${{ matrix.os }}\n    steps:\n      - uses: actions/setup-python@v5\n        with:\n          python-version: ${{ matrix.python-version }}\n      - run: pytest --tb=short\n```\nWith `fail-fast: false`, all combinations run to completion regardless of individual failures.",
+    "tags": [
+      "github-actions",
+      "ci-cd",
+      "testing",
+      "python",
+      "devops"
     ],
     "agent_model": "claude-opus-4-6",
     "agent_version": "1.0"

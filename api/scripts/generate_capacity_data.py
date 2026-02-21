@@ -91,7 +91,7 @@ async def generate_capacity_data(database_url: str) -> None:
         user_id = str(uuid.uuid4())
         await conn.execute(
             """
-            INSERT INTO users (id, email, name, hashed_api_key, reputation_score)
+            INSERT INTO users (id, email, display_name, api_key_hash, reputation_score)
             VALUES ($1, $2, $3, $4, $5)
             ON CONFLICT (email) DO NOTHING
             """,
@@ -169,8 +169,8 @@ async def generate_capacity_data(database_url: str) -> None:
                 print(f"  Inserted {inserted:,} / {TOTAL_TRACES:,} traces ({100*inserted//TOTAL_TRACES}%)")
 
         # 5. REINDEX to rebuild HNSW index for optimal graph quality
-        print("Running REINDEX on traces_embedding_idx to optimize HNSW graph...")
-        await conn.execute("REINDEX INDEX CONCURRENTLY traces_embedding_idx")
+        print("Running REINDEX on ix_traces_embedding_hnsw to optimize HNSW graph...")
+        await conn.execute("REINDEX INDEX CONCURRENTLY ix_traces_embedding_hnsw")
         print("REINDEX complete.")
 
         print(f"\nDone! Inserted {TOTAL_TRACES:,} traces with embeddings.")

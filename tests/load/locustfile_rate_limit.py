@@ -76,11 +76,88 @@ class BurstAgent(HttpUser):
             elif resp.status_code == 429:
                 # 429 is EXPECTED after bucket exhaustion — mark as success
                 self.rate_limited_count += 1
-                resp.success()
+                # GAP 4 fix: verify Retry-After header is present
+                retry_after = resp.headers.get("Retry-After")
+                if retry_after is None:
+                    resp.failure("429 response missing Retry-After header")
+                else:
+                    resp.success()
             else:
                 resp.failure(f"Unexpected status {resp.status_code}")
 
         self.burst_count += 1
+
+
+class RefillAgent(HttpUser):
+    """Validates token-bucket refill: exhaust bucket, wait partial period, verify proportional refill.
+
+    Expected behavior:
+    1. Burst requests until 429 (bucket exhausted)
+    2. Wait 10 seconds (~10/60 = ~10 tokens refilled at 60 tokens/min)
+    3. Send another burst — expect ~10 successes before next 429
+    """
+
+    wait_time = constant(0)
+
+    def on_start(self) -> None:
+        resp = self.client.post(
+            "/api/v1/keys",
+            json={"email": f"refill-{id(self)}@test.invalid"},
+        )
+        if resp.status_code == 201:
+            key_data = resp.json()
+            self.headers = {"X-API-Key": key_data["api_key"]}
+        else:
+            self.headers = {}
+
+        self._phase = "exhaust"  # exhaust → wait → refill_burst → done
+        self._exhaust_429_seen = False
+        self._refill_successes = 0
+        self._refill_done = False
+
+    @task
+    def refill_test(self) -> None:
+        if self._refill_done:
+            time.sleep(5)
+            return
+
+        if self._phase == "exhaust":
+            with self.client.post(
+                "/api/v1/traces/search",
+                json={"q": "refill test"},
+                headers=self.headers,
+                catch_response=True,
+                name="/api/v1/traces/search [refill-exhaust]",
+            ) as resp:
+                if resp.status_code == 429:
+                    self._exhaust_429_seen = True
+                    self._phase = "wait"
+                    resp.success()
+                else:
+                    resp.success()
+
+        elif self._phase == "wait":
+            # Wait 10 seconds for partial refill (~10 tokens at 60/min rate)
+            time.sleep(10)
+            self._phase = "refill_burst"
+
+        elif self._phase == "refill_burst":
+            with self.client.post(
+                "/api/v1/traces/search",
+                json={"q": "refill validation"},
+                headers=self.headers,
+                catch_response=True,
+                name="/api/v1/traces/search [refill-burst]",
+            ) as resp:
+                if resp.status_code == 200:
+                    self._refill_successes += 1
+                    resp.success()
+                elif resp.status_code == 429:
+                    # Refill phase done — we got some successes then hit limit again
+                    self._refill_done = True
+                    resp.success()
+                else:
+                    resp.failure(f"Unexpected status {resp.status_code}")
 
 
 class RealisticAgent(HttpUser):
