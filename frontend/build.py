@@ -5,9 +5,11 @@ with individual trace pages, tag pages, and a searchable index.
 Supports i18n: generates localized versions for each language.
 """
 
+import hashlib
 import json
 import re
 import shutil
+import time
 from collections import Counter, defaultdict
 from pathlib import Path
 
@@ -149,6 +151,10 @@ def build():
     if DEFAULT_LANG not in langs_to_build:
         langs_to_build.insert(0, DEFAULT_LANG)
 
+    # Generate a build version hash for cache-busting static assets
+    build_version = hashlib.md5(str(time.time()).encode()).hexdigest()[:8]
+    print(f"Build version: {build_version}")
+
     # Build each language version
     for lang in langs_to_build:
         t = make_translator(translations, lang)
@@ -165,6 +171,7 @@ def build():
         env.globals["lang"] = lang
         env.globals["supported_langs"] = SUPPORTED_LANGS
         env.globals["default_lang"] = DEFAULT_LANG
+        env.globals["build_version"] = build_version
 
         # Output directory: root for English, /{lang}/ for others
         lang_out = OUT_DIR if lang == DEFAULT_LANG else OUT_DIR / lang
