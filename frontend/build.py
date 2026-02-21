@@ -1,7 +1,8 @@
 """Static site generator for CommonTrace frontend.
 
-Reads seed_traces.json and generates a Wikipedia-style static site
+Reads seed_traces.json and generates a static site
 with individual trace pages, tag pages, and a searchable index.
+Supports i18n: generates localized versions for each language.
 """
 
 import json
@@ -16,9 +17,13 @@ from pygments.formatters import HtmlFormatter
 
 
 SEED_TRACES_PATH = Path("seed_traces.json")
+TRANSLATIONS_PATH = Path("translations.json")
 TEMPLATES_DIR = Path("templates")
 STATIC_DIR = Path("static")
 OUT_DIR = Path("_site")
+
+SUPPORTED_LANGS = ["en", "fr", "zh", "es", "pt", "de", "ja"]
+DEFAULT_LANG = "en"
 
 # Primary languages/frameworks for homepage stats
 TOP_LANGUAGES = [
@@ -56,10 +61,50 @@ def find_related(trace: dict, all_traces: list[dict], limit: int = 5) -> list[di
     return [t for _, t in scored[:limit]]
 
 
+def load_translations() -> dict:
+    """Load translations from JSON file."""
+    if TRANSLATIONS_PATH.exists():
+        return json.loads(TRANSLATIONS_PATH.read_text())
+    # Fallback: return empty dict, English strings are hardcoded in templates
+    return {}
+
+
+def make_translator(translations: dict, lang: str):
+    """Create a translation function for a specific language."""
+    lang_strings = translations.get(lang, {})
+    en_strings = translations.get("en", {})
+
+    def t(key: str, **kwargs) -> str:
+        # Use None sentinel to distinguish missing keys from empty strings
+        text = lang_strings.get(key)
+        if text is None:
+            text = en_strings.get(key)
+        if text is None:
+            text = key
+        if kwargs:
+            for k, v in kwargs.items():
+                text = text.replace("{" + k + "}", str(v))
+        return text
+
+    return t
+
+
+def make_url_helper(lang: str):
+    """Create a URL helper that prepends language prefix for non-default langs."""
+    if lang == DEFAULT_LANG:
+        return lambda path: path
+    prefix = f"/{lang}"
+    return lambda path: f"{prefix}{path}"
+
+
 def build():
     # Load traces
     traces = json.loads(SEED_TRACES_PATH.read_text())
     print(f"Loaded {len(traces)} traces")
+
+    # Load translations
+    translations = load_translations()
+    print(f"Loaded translations for: {', '.join(translations.keys()) or 'none'}")
 
     # Enrich traces
     for trace in traces:
@@ -80,12 +125,7 @@ def build():
     # Detect top languages present in tags
     top_languages = [lang for lang in TOP_LANGUAGES if lang in tag_counts]
 
-    # Jinja2 setup
-    env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=False)
-    env.globals["all_tags"] = all_tags_sorted
-    env.globals["total_traces"] = len(traces)
-
-    # Pygments CSS (light theme for Wikipedia-style)
+    # Pygments CSS (light theme)
     formatter = HtmlFormatter(style="friendly")
     pygments_css = formatter.get_style_defs(".highlight")
 
@@ -94,65 +134,7 @@ def build():
         shutil.rmtree(OUT_DIR)
     OUT_DIR.mkdir(parents=True)
 
-    # Generate homepage
-    home_tpl = env.get_template("home.html")
-    (OUT_DIR / "index.html").write_text(
-        home_tpl.render(
-            recent_traces=traces[:10],
-            top_languages=top_languages,
-            page_title="CommonTrace — The AI Knowledge Base",
-        )
-    )
-    print("Generated homepage")
-
-    # Generate browse/all traces page
-    browse_tpl = env.get_template("index.html")
-    browse_dir = OUT_DIR / "browse"
-    browse_dir.mkdir(parents=True, exist_ok=True)
-    (browse_dir / "index.html").write_text(
-        browse_tpl.render(traces=traces, page_title="All traces — CommonTrace")
-    )
-    print("Generated browse page")
-
-    # Generate individual trace pages
-    trace_tpl = env.get_template("trace.html")
-    for trace in traces:
-        trace_dir = OUT_DIR / "trace" / trace["slug"]
-        trace_dir.mkdir(parents=True, exist_ok=True)
-        related = find_related(trace, traces)
-        (trace_dir / "index.html").write_text(
-            trace_tpl.render(
-                trace=trace,
-                related_traces=related,
-                page_title=f"{trace['title']} — CommonTrace",
-            )
-        )
-    print(f"Generated {len(traces)} trace pages")
-
-    # Generate tag pages
-    tag_tpl = env.get_template("tag.html")
-    for tag, tag_traces in tag_index.items():
-        tag_dir = OUT_DIR / "tag" / tag
-        tag_dir.mkdir(parents=True, exist_ok=True)
-        (tag_dir / "index.html").write_text(
-            tag_tpl.render(
-                tag=tag,
-                traces=tag_traces,
-                page_title=f"{tag} — CommonTrace",
-            )
-        )
-    print(f"Generated {len(tag_index)} tag pages")
-
-    # Generate about page
-    about_tpl = env.get_template("about.html")
-    about_dir = OUT_DIR / "about"
-    about_dir.mkdir(parents=True, exist_ok=True)
-    (about_dir / "index.html").write_text(
-        about_tpl.render(page_title="About — CommonTrace")
-    )
-    print("Generated about page")
-
-    # Static assets
+    # Static assets (shared across all languages)
     static_out = OUT_DIR / "static"
     static_out.mkdir(parents=True, exist_ok=True)
     (static_out / "highlight.css").write_text(pygments_css)
@@ -161,6 +143,90 @@ def build():
     for f in STATIC_DIR.iterdir():
         if f.is_file():
             shutil.copy(f, static_out / f.name)
+
+    # Determine which languages to build
+    langs_to_build = [lang for lang in SUPPORTED_LANGS if lang in translations]
+    if DEFAULT_LANG not in langs_to_build:
+        langs_to_build.insert(0, DEFAULT_LANG)
+
+    # Build each language version
+    for lang in langs_to_build:
+        t = make_translator(translations, lang)
+        url = make_url_helper(lang)
+
+        # Jinja2 setup (fresh env per language for globals)
+        env = Environment(
+            loader=FileSystemLoader(str(TEMPLATES_DIR)), autoescape=False
+        )
+        env.globals["all_tags"] = all_tags_sorted
+        env.globals["total_traces"] = len(traces)
+        env.globals["t"] = t
+        env.globals["url"] = url
+        env.globals["lang"] = lang
+        env.globals["supported_langs"] = SUPPORTED_LANGS
+        env.globals["default_lang"] = DEFAULT_LANG
+
+        # Output directory: root for English, /{lang}/ for others
+        lang_out = OUT_DIR if lang == DEFAULT_LANG else OUT_DIR / lang
+        lang_out.mkdir(parents=True, exist_ok=True)
+
+        # Generate homepage
+        home_tpl = env.get_template("home.html")
+        (lang_out / "index.html").write_text(
+            home_tpl.render(
+                recent_traces=traces[:10],
+                top_languages=top_languages,
+                page_title=f"CommonTrace — {t('nav.subtitle')}",
+            )
+        )
+
+        # Generate browse/all traces page
+        browse_tpl = env.get_template("index.html")
+        browse_dir = lang_out / "browse"
+        browse_dir.mkdir(parents=True, exist_ok=True)
+        (browse_dir / "index.html").write_text(
+            browse_tpl.render(
+                traces=traces,
+                page_title=f"{t('browse.title')} — CommonTrace",
+            )
+        )
+
+        # Generate individual trace pages
+        trace_tpl = env.get_template("trace.html")
+        for trace in traces:
+            trace_dir = lang_out / "trace" / trace["slug"]
+            trace_dir.mkdir(parents=True, exist_ok=True)
+            related = find_related(trace, traces)
+            (trace_dir / "index.html").write_text(
+                trace_tpl.render(
+                    trace=trace,
+                    related_traces=related,
+                    page_title=f"{trace['title']} — CommonTrace",
+                )
+            )
+
+        # Generate tag pages
+        tag_tpl = env.get_template("tag.html")
+        for tag, tag_traces in tag_index.items():
+            tag_dir = lang_out / "tag" / tag
+            tag_dir.mkdir(parents=True, exist_ok=True)
+            (tag_dir / "index.html").write_text(
+                tag_tpl.render(
+                    tag=tag,
+                    traces=tag_traces,
+                    page_title=f"{tag} — CommonTrace",
+                )
+            )
+
+        # Generate about page
+        about_tpl = env.get_template("about.html")
+        about_dir = lang_out / "about"
+        about_dir.mkdir(parents=True, exist_ok=True)
+        (about_dir / "index.html").write_text(
+            about_tpl.render(page_title=f"{t('about.title')} — CommonTrace")
+        )
+
+        print(f"Generated [{lang}]: homepage, browse, {len(traces)} traces, {len(tag_index)} tags, about")
 
     print(f"Build complete: {OUT_DIR}/")
 

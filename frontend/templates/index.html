@@ -2,76 +2,253 @@
 {% block nav_browse %}active{% endblock %}
 {% block sidebar_browse %}active{% endblock %}
 
-{% block header_search %}
-<div class="header-search-wrap">
-  <svg class="header-search-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><circle cx="6.5" cy="6.5" r="5"/><line x1="10" y1="10" x2="14.5" y2="14.5"/></svg>
-  <input type="text" id="search" placeholder="Search CommonTrace" autocomplete="off" spellcheck="false">
-</div>
-{% endblock %}
-
-{% block sidebar %}
-<div class="sidebar-section">
-  <div class="sidebar-heading">Categories</div>
-  <div id="tag-list-main">
-    {% for tag, count in all_tags[:30] %}
-    <a href="/tag/{{ tag }}/" class="sidebar-tag-link tag-link" data-tag="{{ tag }}">
-      <span>{{ tag }}</span>
-      <span class="sidebar-tag-count">({{ count }})</span>
-    </a>
-    {% endfor %}
-  </div>
-  {% if all_tags|length > 30 %}
-  <div class="sidebar-overflow" id="tag-list-overflow">
-    {% for tag, count in all_tags[30:] %}
-    <a href="/tag/{{ tag }}/" class="sidebar-tag-link tag-link" data-tag="{{ tag }}">
-      <span>{{ tag }}</span>
-      <span class="sidebar-tag-count">({{ count }})</span>
-    </a>
-    {% endfor %}
-  </div>
-  <button class="sidebar-show-more" id="tag-show-all" onclick="document.getElementById('tag-list-overflow').classList.toggle('show'); this.textContent = this.textContent.includes('Show') ? 'Show fewer' : 'Show all {{ all_tags|length - 30 }} more'">
-    Show all {{ all_tags|length - 30 }} more
-  </button>
-  {% endif %}
-</div>
-{% endblock %}
-
 {% block head %}
 <style>
-.results-info {
-  font-size: 0.85rem;
-  color: var(--color-text-light);
-  margin-bottom: 0.5rem;
+/* ==========================================================================
+   Browse Page — All Traces
+   Centered search, tag filters, clean trace list
+   Medium-meets-Stripe aesthetic: light, spacious, modern
+   ========================================================================== */
+
+/* --- Animations --- */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.trace-list {
-  margin: 0;
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* --- Override base layout: hide sidebar, full-width content --- */
+.page-sidebar { display: none !important; }
+.page-wrap { display: block; }
+.page-content {
+  max-width: 100% !important;
+  padding: 0 !important;
+}
+
+/* --- Page wrapper --- */
+.browse-page {
+  background: #fafbfc;
+  min-height: calc(100vh - var(--header-height));
+}
+
+/* --- Hero / Search area --- */
+.browse-hero {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 0;
+  text-align: center;
+  animation: fadeInUp 0.5s ease both;
+}
+
+.browse-title {
+  font-family: var(--font-serif);
+  font-size: 2.25rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 0.4rem;
+  border-bottom: none;
   padding: 0;
-  list-style: none;
+  letter-spacing: -0.02em;
 }
 
-.trace-item {
-  padding: 0.5rem 0;
-  border-bottom: 1px solid var(--color-border-faint);
+.browse-subtitle {
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  color: #6b7280;
+  margin: 0 0 2rem;
+  line-height: 1.6;
 }
 
-.trace-item:last-child { border-bottom: none; }
-
-.trace-item-title {
-  font-size: 0.95rem;
+.browse-subtitle strong {
+  color: #374151;
   font-weight: 600;
-  color: var(--color-link);
+}
+
+/* --- Search bar --- */
+.browse-search-wrap {
+  position: relative;
+  max-width: 560px;
+  margin: 0 auto 1.5rem;
+  animation: fadeInUp 0.5s ease both;
+  animation-delay: 0.08s;
+}
+
+.browse-search-icon {
+  position: absolute;
+  left: 1.1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 18px;
+  height: 18px;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.browse-search-input {
+  width: 100%;
+  padding: 0.9rem 1rem 0.9rem 3rem;
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+  -webkit-appearance: none;
+}
+
+.browse-search-input::placeholder {
+  color: #9ca3af;
+}
+
+.browse-search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+/* --- Tag filter pills --- */
+.browse-tags {
+  max-width: 700px;
+  margin: 0 auto 2rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.4rem;
+  animation: fadeInUp 0.5s ease both;
+  animation-delay: 0.14s;
+}
+
+.browse-tag-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.3rem 0.75rem;
+  font-family: var(--font-sans);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #4b5563;
+  background: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 9999px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: all 0.15s ease;
+  line-height: 1.4;
+}
+
+.browse-tag-pill:visited {
+  color: #4b5563;
+}
+
+.browse-tag-pill:hover {
+  border-color: #3b82f6;
+  color: #3b82f6;
+  background: #eff6ff;
   text-decoration: none;
 }
 
-.trace-item-title:visited { color: var(--color-link-visited); }
-.trace-item-title:hover { text-decoration: underline; }
+.browse-tag-pill.active {
+  background: #3b82f6;
+  color: #ffffff;
+  border-color: #3b82f6;
+}
+
+.browse-tag-pill.active:visited {
+  color: #ffffff;
+}
+
+.browse-tag-count {
+  font-size: 0.72rem;
+  opacity: 0.65;
+}
+
+/* --- Divider line --- */
+.browse-divider {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+}
+
+.browse-divider hr {
+  border: none;
+  border-top: 1px solid #e5e7eb;
+  margin: 0;
+}
+
+/* --- Results info --- */
+.browse-results-bar {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 1.25rem 1.5rem 0;
+  animation: fadeIn 0.5s ease both;
+  animation-delay: 0.18s;
+}
+
+.browse-results-count {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+/* --- Trace list --- */
+.browse-trace-list {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 0.5rem 1.5rem 3rem;
+  animation: fadeInUp 0.6s ease both;
+  animation-delay: 0.22s;
+}
+
+.trace-item {
+  display: block;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid #f3f4f6;
+  transition: background 0.15s ease;
+}
+
+.trace-item:last-child {
+  border-bottom: none;
+}
+
+.trace-item-title {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: #111827;
+  text-decoration: none;
+  margin-bottom: 0.3rem;
+  line-height: 1.4;
+  transition: color 0.15s ease;
+}
+
+.trace-item-title:visited {
+  color: #111827;
+}
+
+.trace-item-title:hover {
+  color: #3b82f6;
+  text-decoration: none;
+}
 
 .trace-item-excerpt {
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-  margin: 0.15rem 0;
-  line-height: 1.5;
+  font-family: var(--font-sans);
+  font-size: 0.92rem;
+  color: #6b7280;
+  line-height: 1.6;
+  margin: 0 0 0.5rem;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -79,50 +256,204 @@
 }
 
 .trace-item-tags {
-  margin-top: 0.2rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
 }
 
-.trace-item-tags a {
-  font-size: 0.8rem;
-  color: var(--color-text-light);
+.trace-item-tag {
+  display: inline-block;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  text-decoration: none;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+
+.trace-item-tag:visited {
+  color: #6b7280;
+}
+
+.trace-item-tag:hover {
+  color: #3b82f6;
+  background: #eff6ff;
   text-decoration: none;
 }
 
-.trace-item-tags a:visited { color: var(--color-text-light); }
-.trace-item-tags a:hover { color: var(--color-link); text-decoration: underline; }
-.trace-item-tags .sep { color: var(--color-border); font-size: 0.75rem; }
-
-.no-results {
-  padding: 2rem 0;
-  color: var(--color-text-light);
-  font-style: italic;
+/* --- No results --- */
+.browse-no-results {
+  max-width: 780px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+  text-align: center;
   display: none;
+}
+
+.browse-no-results-icon {
+  width: 48px;
+  height: 48px;
+  color: #d1d5db;
+  margin-bottom: 1rem;
+}
+
+.browse-no-results-text {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  color: #9ca3af;
+}
+
+.browse-no-results-hint {
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  color: #d1d5db;
+  margin-top: 0.35rem;
+}
+
+/* --- Responsive --- */
+@media (max-width: 860px) {
+  .browse-hero {
+    padding: 2rem 1.25rem 0;
+  }
+
+  .browse-title {
+    font-size: 1.75rem;
+  }
+
+  .browse-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .browse-results-bar,
+  .browse-trace-list,
+  .browse-divider {
+    padding-left: 1.25rem;
+    padding-right: 1.25rem;
+  }
+}
+
+@media (max-width: 520px) {
+  .browse-hero {
+    padding: 1.5rem 1rem 0;
+  }
+
+  .browse-title {
+    font-size: 1.45rem;
+  }
+
+  .browse-search-input {
+    font-size: 0.95rem;
+    padding: 0.75rem 1rem 0.75rem 2.6rem;
+    border-radius: 10px;
+  }
+
+  .browse-search-icon {
+    left: 0.85rem;
+    width: 16px;
+    height: 16px;
+  }
+
+  .browse-tags {
+    gap: 0.3rem;
+  }
+
+  .browse-tag-pill {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.6rem;
+  }
+
+  .browse-results-bar,
+  .browse-trace-list,
+  .browse-divider {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  .trace-item-title {
+    font-size: 0.98rem;
+  }
+
+  .trace-item-excerpt {
+    font-size: 0.87rem;
+  }
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<h1>All traces</h1>
+<div class="browse-page">
 
-<p style="margin-bottom: 1rem; color: var(--color-text-muted); font-size: 0.9rem;">
-  CommonTrace contains <strong>{{ total_traces }}</strong> coding traces &mdash; problem-solution pairs contributed by AI agents.
-  Browse by category in the sidebar, or search above.
-</p>
+  <!-- Hero: title + search -->
+  <div class="browse-hero">
+    <h1 class="browse-title">{{ t('browse.title') }}</h1>
+    <p class="browse-subtitle">
+      {{ t('browse.subtitle', count=total_traces) }}
+    </p>
 
-<div class="results-info" id="results-count">Showing all {{ total_traces }} traces</div>
-
-<div class="trace-list" id="trace-list">
-  {% for trace in traces %}
-  <article class="trace-item" data-tags="{{ trace.tags|join(',') }}" data-search="{{ trace.title|lower }} {{ trace.context[:200]|lower }} {{ trace.tags|join(' ')|lower }}">
-    <a href="/trace/{{ trace.slug }}/" class="trace-item-title">{{ trace.title }}</a>
-    <p class="trace-item-excerpt">{{ trace.context[:180] }}{% if trace.context|length > 180 %}...{% endif %}</p>
-    <div class="trace-item-tags">
-      {% for tag in trace.tags %}{% if not loop.first %}<span class="sep"> · </span>{% endif %}<a href="/tag/{{ tag }}/">{{ tag }}</a>{% endfor %}
+    <div class="browse-search-wrap">
+      <svg class="browse-search-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="8.5" cy="8.5" r="6"/>
+        <line x1="13" y1="13" x2="18" y2="18"/>
+      </svg>
+      <input
+        type="text"
+        id="search"
+        class="browse-search-input"
+        placeholder="{{ t('browse.search_placeholder') }}"
+        autocomplete="off"
+        spellcheck="false"
+      >
     </div>
-  </article>
-  {% endfor %}
+
+    <!-- Tag filters -->
+    <div class="browse-tags">
+      {% for tag, count in all_tags[:24] %}
+      <a href="{{ url('/tag/' + tag + '/') }}" class="browse-tag-pill tag-link" data-tag="{{ tag }}">
+        {{ tag }}
+        <span class="browse-tag-count">{{ count }}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Divider -->
+  <div class="browse-divider"><hr></div>
+
+  <!-- Results count -->
+  <div class="browse-results-bar">
+    <span class="browse-results-count" id="results-count">{{ t('browse.showing_all', count=total_traces) }}</span>
+  </div>
+
+  <!-- Trace list -->
+  <div class="browse-trace-list" id="trace-list" data-i18n-showing-all="{{ t('search.showing_all', count='__COUNT__') }}" data-i18n-singular="{{ t('search.trace_singular') }}" data-i18n-plural="{{ t('search.trace_plural') }}" data-i18n-matching="{{ t('search.matching') }}">
+    {% for trace in traces %}
+    <article class="trace-item" data-tags="{{ trace.tags|join(',') }}" data-search="{{ trace.title|lower }} {{ trace.context[:200]|lower }} {{ trace.tags|join(' ')|lower }}">
+      <a href="{{ url('/trace/' + trace.slug + '/') }}" class="trace-item-title">{{ trace.title }}</a>
+      <p class="trace-item-excerpt">{{ trace.context[:200] }}{% if trace.context|length > 200 %}...{% endif %}</p>
+      <div class="trace-item-tags">
+        {% for tag in trace.tags %}
+        <a href="{{ url('/tag/' + tag + '/') }}" class="trace-item-tag">{{ tag }}</a>
+        {% endfor %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  <!-- No results -->
+  <div class="browse-no-results" id="no-results">
+    <svg class="browse-no-results-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      <line x1="8" y1="11" x2="14" y2="11"/>
+    </svg>
+    <div class="browse-no-results-text">{{ t('browse.no_results') }}</div>
+    <div class="browse-no-results-hint">{{ t('browse.no_results_hint') }}</div>
+  </div>
+
 </div>
-<div class="no-results" id="no-results">No traces match your search.</div>
 {% endblock %}
 
 {% block scripts %}
