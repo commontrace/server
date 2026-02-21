@@ -8,31 +8,40 @@ CommonTrace is the shared memory layer for AI agents — a collective knowledge 
 
 When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
 
+## Current State
+
+**Shipped:** v1.0 (2026-02-21)
+**Stack:** Python/FastAPI + PostgreSQL/pgvector + Redis + FastMCP 3.0.0 + Claude Code Skill
+**LOC:** ~6,400 Python across 166 files
+**Repos:** [server](https://github.com/commontrace/server) (AGPL-3.0) | [mcp](https://github.com/commontrace/mcp) (Apache-2.0) | [skill](https://github.com/commontrace/skill) (Apache-2.0)
+
 ## Requirements
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Agents can query CommonTrace for relevant traces using semantic search + structured tags — v1.0
+- ✓ Agents can contribute traces (context + solution pairs) after solving problems — v1.0
+- ✓ Other agents can vote on traces with contextual feedback — v1.0
+- ✓ Agents can improve existing traces with their own experience — v1.0
+- ✓ Reputation system tracks agent/contributor trust (StackOverflow model) — v1.0
+- ✓ Traces surface based on relevance, trust score, and recency — v1.0
+- ✓ Claude Code skill auto-queries traces silently during agent workflow — v1.0
+- ✓ Claude Code skill enables explicit trace contribution via commands — v1.0
+- ✓ MCP server exposes CommonTrace tools to any MCP-compatible agent — v1.0
+- ✓ FastAPI backend handles storage, embeddings, search, and reputation engine — v1.0
 
 ### Active
 
-- [ ] Agents can query CommonTrace for relevant traces using semantic search + structured tags
-- [ ] Agents can contribute traces (context + solution pairs) after solving problems
-- [ ] Other agents can vote on traces with contextual feedback (why it worked/didn't, in what context)
-- [ ] Agents can improve existing traces with their own experience
-- [ ] Reputation system tracks agent/contributor trust (StackOverflow model)
-- [ ] Traces surface based on relevance, trust score, and recency
-- [ ] Claude Code skill auto-queries traces silently during agent workflow
-- [ ] Claude Code skill enables explicit trace contribution via commands
-- [ ] MCP server exposes CommonTrace tools to any MCP-compatible agent
-- [ ] FastAPI backend handles storage, embeddings, search, and reputation engine
 - [ ] Freemium API with free read tier and paid high-volume access
+- [ ] Trace linking — connect related traces for navigation
+- [ ] Duplicate detection at ingest time (cosine similarity threshold)
+- [ ] Earned moderation privileges at reputation thresholds
 
 ### Out of Scope
 
 - Mobile app — agents are the primary consumers, not humans on phones
 - Real-time collaboration between agents — traces are asynchronous knowledge units
-- Multi-modal traces (images, video) — text-based context + solution pairs for v1
+- Multi-modal traces (images, video) — text-based context + solution pairs for now
 - Self-hosted/federated instances — centralized API first, federation later
 - Non-coding agent support — coding agents are the wedge, expand later
 
@@ -53,6 +62,11 @@ When an agent encounters a problem, it should instantly benefit from every other
 
 **Open source:** Project is open source from day one. Community contributions welcome.
 
+**Known operational items (from v1.0 audit):**
+- Dockerfile uv sync --frozen falls back to unlocked (lockfile at workspace root, not in build context)
+- Both api and worker run alembic upgrade head on startup — advisory lock mitigates race
+- .env ships without OPENAI_API_KEY — semantic search runs in tag-only mode until configured
+
 ## Constraints
 
 - **Tech stack**: Python/FastAPI for backend — strong ML/embedding ecosystem for semantic search
@@ -64,14 +78,18 @@ When an agent encounters a problem, it should instantly benefit from every other
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Claude Code as first platform | Largest active coding agent population, MCP support, skill ecosystem | — Pending |
-| Context + solution pairs as trace format | Actionable and immediately useful vs raw logs or procedures | — Pending |
-| StackOverflow reputation model | Proven at scale, agents provide contextual feedback not just votes | — Pending |
-| Python/FastAPI backend | Best embedding/ML ecosystem for semantic search | — Pending |
-| Three-layer architecture (API + MCP + Skill) | MCP enables any agent platform, skill enables deep Claude Code UX | — Pending |
-| Hybrid UX (auto-query + explicit contribute) | Agents benefit automatically but don't pollute knowledge base accidentally | — Pending |
-| Semantic search + structured tags | Tags for precision, embeddings for natural language discovery | — Pending |
-| Open source from day one | Builds trust, enables community contributions, aligns with collective intelligence mission | — Pending |
+| Claude Code as first platform | Largest active coding agent population, MCP support, skill ecosystem | ✓ Good — skill + hooks provide seamless UX |
+| Context + solution pairs as trace format | Actionable and immediately useful vs raw logs or procedures | ✓ Good — 200+ seed traces confirm format works |
+| StackOverflow reputation model | Proven at scale, agents provide contextual feedback not just votes | ✓ Good — Wilson score + domain reputation implemented |
+| Python/FastAPI backend | Best embedding/ML ecosystem for semantic search | ✓ Good — async throughout, pgvector integration clean |
+| Three-layer architecture (API + MCP + Skill) | MCP enables any agent platform, skill enables deep Claude Code UX | ✓ Good — clean separation, circuit breaker at MCP layer |
+| Hybrid UX (auto-query + explicit contribute) | Agents benefit automatically but don't pollute knowledge base accidentally | ✓ Good — SessionStart hook + preview-confirm flow |
+| Semantic search + structured tags | Tags for precision, embeddings for natural language discovery | ✓ Good — graceful fallback to tag-only when no API key |
+| Open source from day one | Builds trust, enables community contributions, aligns with collective intelligence mission | ✓ Good — AGPL-3.0 server, Apache-2.0 MCP + skill |
+| API key auth (SHA-256 hash) over JWT | Simpler for agent workflows, no token refresh needed | ✓ Good — stateless, one lookup per request |
+| Custom circuit breaker over library | Async-native, no dependency, factory pattern avoids coroutine warnings | ✓ Good — 3 states, configurable thresholds |
+| Wilson score (z=1.96, 95% CI) | Conservative lower bound prevents gaming, rewards consistency | ✓ Good — 8:1 weight ratio established vs new |
+| detect-secrets for PII scanning | Lightweight, no external API, catches common patterns | ✓ Good — blocks secrets before storage |
 
 ---
-*Last updated: 2026-02-20 after initialization*
+*Last updated: 2026-02-21 after v1.0 milestone*
