@@ -41,17 +41,17 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### MCP Server
 
-- [ ] **MCP-01**: Stateless MCP server exposes CommonTrace tools via Streamable HTTP transport
-- [ ] **MCP-02**: MCP server provides search_traces, contribute_trace, and vote_trace tools
-- [ ] **MCP-03**: MCP server implements circuit-breaking — agent sessions never blocked by CommonTrace failures
-- [ ] **MCP-04**: MCP server supports both stdio (local) and HTTP (remote) transports
+- [x] **MCP-01**: Stateless MCP server exposes CommonTrace tools via Streamable HTTP transport
+- [x] **MCP-02**: MCP server provides search_traces, contribute_trace, and vote_trace tools
+- [x] **MCP-03**: MCP server implements circuit-breaking — agent sessions never blocked by CommonTrace failures
+- [x] **MCP-04**: MCP server supports both stdio (local) and HTTP (remote) transports
 
 ### Claude Code Skill
 
-- [ ] **SKIL-01**: Skill provides explicit /trace:search and /trace:contribute commands
-- [ ] **SKIL-02**: Skill auto-configures MCP server connection on installation
-- [ ] **SKIL-03**: Skill auto-queries CommonTrace silently at task start when relevant context is detected
-- [ ] **SKIL-04**: Skill prompts agent to contribute a trace after successfully completing a task
+- [x] **SKIL-01**: Skill provides explicit /trace:search and /trace:contribute commands
+- [x] **SKIL-02**: Skill auto-configures MCP server connection on installation
+- [x] **SKIL-03**: Skill auto-queries CommonTrace silently at task start when relevant context is detected
+- [x] **SKIL-04**: Skill prompts agent to contribute a trace after successfully completing a task
 
 ### Trust & Safety
 
@@ -62,7 +62,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Cold Start
 
-- [ ] **SEED-01**: 200-500 high-quality curated seed traces exist before public launch
+- [x] **SEED-01**: 200-500 high-quality curated seed traces exist before public launch
 
 ## v2 Requirements
 
@@ -119,19 +119,19 @@ Which phases cover which requirements. Updated during roadmap creation.
 | REPU-03 | Phase 4 | Done |
 | API-01 | Phase 2 | Done |
 | API-02 | Phase 2 | Done |
-| MCP-01 | Phase 5 | Pending |
-| MCP-02 | Phase 5 | Pending |
-| MCP-03 | Phase 5 | Pending |
-| MCP-04 | Phase 5 | Pending |
-| SKIL-01 | Phase 6 | Pending |
-| SKIL-02 | Phase 6 | Pending |
-| SKIL-03 | Phase 6 | Pending |
-| SKIL-04 | Phase 6 | Pending |
+| MCP-01 | Phase 5 | Done |
+| MCP-02 | Phase 5 | Done |
+| MCP-03 | Phase 5 | Done |
+| MCP-04 | Phase 5 | Done |
+| SKIL-01 | Phase 6 | Done |
+| SKIL-02 | Phase 6 | Done |
+| SKIL-03 | Phase 6 | Done |
+| SKIL-04 | Phase 6 | Done |
 | SAFE-01 | Phase 2 | Done |
 | SAFE-02 | Phase 2 | Done |
 | SAFE-03 | Phase 2 | Done |
 | SAFE-04 | Phase 2 | Done |
-| SEED-01 | Phase 7 | Pending |
+| SEED-01 | Phase 7 | Done |
 
 **Coverage:**
 - v1 requirements: 30 total
@@ -140,4 +140,4 @@ Which phases cover which requirements. Updated during roadmap creation.
 
 ---
 *Requirements defined: 2026-02-20*
-*Last updated: 2026-02-20 — traceability populated after roadmap creation*
+*Last updated: 2026-02-21 — all v1 requirements marked done after milestone audit*
