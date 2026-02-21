@@ -5,14 +5,14 @@
 See: .planning/PROJECT.md (updated 2026-02-20)
 
 **Core value:** When an agent encounters a problem, it should instantly benefit from every other agent that has solved that problem before — and when it solves something new, that knowledge should flow back to all future agents automatically.
-**Current focus:** All 7 phases complete — milestone ready for completion
+**Current focus:** Phase 8 tech debt cleanup — plan 02/02 complete
 
 ## Current Position
 
-Phase: 7 of 7 (Cold Start + Launch Hardening) — COMPLETE
-Plan: 2/2 in current phase — all plans complete
-Status: All phases complete. Verified 7/7 must-haves. 3 items need human verification (live stack testing).
-Last activity: 2026-02-21 — Phase 7 complete (200 seed traces, import pipeline, 100K capacity test, Locust load tests, rate limiter validation)
+Phase: 8 of 8 (Tech Debt Cleanup) — IN PROGRESS (plan 2/2 complete)
+Plan: 2/2 in current phase
+Status: Phase 8 plan 02 complete. Dead code removed, Alembic imports fixed, Docker healthcheck added, docs updated.
+Last activity: 2026-02-21 — Phase 8 plan 02 complete (normalize_tags removed, env.py imports, healthcheck, README, .env.example)
 
 Progress: [██████████] 100%
 
@@ -43,6 +43,7 @@ Progress: [██████████] 100%
 | Phase | Plans | Total | Avg/Plan |
 |-------|-------|-------|----------|
 | 07-cold-start-launch-hardening | 2/2 | 40 min | ~20 min |
+| Phase 08-tech-debt-cleanup P02 | 2 | 3 tasks | 6 files |
 
 ## Accumulated Context
 
@@ -97,7 +98,7 @@ Recent decisions affecting current work:
 - [05-01]: FastMCP 3.0.0 CurrentHeaders() is in fastmcp.dependencies — verified before implementation
 - [05-01]: MCP tools return str not dict — format_* functions convert JSON to agent-readable strings
 - [05-01]: GET /api/v1/tags uses CurrentUser not RequireEmail — read operation, no identity cost required
-- [05-01]: docker-compose uses service_started not service_healthy for api dependency — circuit breaker handles backend unavailability
+- [05-01]: docker-compose original used service_started for api dependency — circuit breaker handles backend unavailability (upgraded to service_healthy in 08-02)
 - [05-02]: CircuitBreaker custom async implementation using asyncio.wait_for — no third-party library needed
 - [05-02]: 4xx errors do NOT trip circuit — check status_code >= 500 outside circuit, call _on_failure() manually for server errors
 - [05-02]: half-open state allows exactly one probe; _on_success() resets to closed, _on_failure() re-opens
@@ -114,6 +115,9 @@ Recent decisions affecting current work:
 - [Phase 07-01]: import_seeds.py uses standalone create_async_engine (not app.database) — runs independently without FastAPI app
 - [Phase 07-01]: Seed user email seeds@commontrace.internal (distinct from seed@commontrace.dev used by seed_fixtures.py)
 - [Phase 07-01]: Idempotency check: title + is_seed IS TRUE — avoids false match against real user's trace with same title
+- [Phase 08-02]: Use python3 urllib in Docker healthcheck — curl not guaranteed in Python base images
+- [Phase 08-02]: mcp-server upgraded from service_started to service_healthy — ensures API ready before MCP connects
+- [Phase 08-02]: OPENAI_API_KEY and COMMONTRACE_API_KEY commented out in .env.example — secrets must be explicitly set
 
 ### Pending Todos
 
@@ -127,5 +131,5 @@ None yet.
 ## Session Continuity
 
 Last session: 2026-02-21
-Stopped at: All 7 phases complete — milestone ready for /gsd:complete-milestone
+Stopped at: Completed 08-02-PLAN.md
 Resume file: None
