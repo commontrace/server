@@ -19,6 +19,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] **Phase 5: MCP Server** - Stateless protocol adapter exposing CommonTrace tools to any agent (completed 2026-02-20)
 - [x] **Phase 6: Claude Code Skill** - Auto-query on task start and explicit contribution commands (completed 2026-02-20)
 - [x] **Phase 7: Cold Start + Launch Hardening** - Seed knowledge base and validate system at launch scale (completed 2026-02-21)
+- [ ] **Phase 8: Tech Debt Cleanup** - Close audit gaps: MCP amendment tool, explicit deps, dead code, Docker healthcheck, docs
 
 ## Phase Details
 
@@ -134,10 +135,27 @@ Plans:
 - [x] 07-01-PLAN.md — 200+ curated seed traces (React, PostgreSQL, Docker, FastAPI, TypeScript, CI/CD, API integrations) + idempotent import pipeline script
 - [x] 07-02-PLAN.md — 100K synthetic trace generator + Locust load tests for HNSW p99 latency and rate limiter burst validation + Docker Compose capacity override
 
+### Phase 8: Tech Debt Cleanup
+**Goal:** Close all non-blocking tech debt items from the v1.0 milestone audit — add missing MCP amendment tool, declare explicit dependencies, remove dead code, fix stale documentation, and improve Docker Compose startup reliability
+**Depends on**: Phase 7 (all functional phases must be complete)
+**Requirements**: None (tech debt closure, not new requirements)
+**Gap Closure:** Closes all 11 tech debt items + 1 integration gap + 1 flow gap from v1.0-MILESTONE-AUDIT.md
+**Success Criteria** (what must be TRUE):
+  1. An MCP-compatible agent can submit an amendment to a trace via the amend_trace MCP tool — the amendment appears in the database linked to the original trace
+  2. httpx is declared as an explicit dependency in mcp-server/pyproject.toml — not relying on transitive availability through fastmcp
+  3. migrations/env.py imports all ORM models (including Amendment and ContributorDomainReputation) — alembic check produces no warnings
+  4. The normalize_tags (plural) dead code is removed from tags.py — only normalize_tag (singular) remains
+  5. README.md and .env.example clearly document OPENAI_API_KEY and COMMONTRACE_API_KEY as required configuration with explanation of degraded behavior when absent
+  6. Docker Compose api service has a healthcheck so mcp-server can use service_healthy dependency condition
+**Plans:** 1 plan
+
+Plans:
+- [ ] 08-01-PLAN.md — Tech debt cleanup: MCP amendment tool, explicit deps, dead code removal, Docker healthcheck, documentation fixes
+
 ## Progress
 
 **Execution Order:**
-Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
+Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7 -> 8
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
@@ -148,3 +166,4 @@ Phases execute in numeric order: 1 -> 2 -> 3 -> 4 -> 5 -> 6 -> 7
 | 5. MCP Server | 2/2 | Complete | 2026-02-20 |
 | 6. Claude Code Skill | 2/2 | Complete | 2026-02-20 |
 | 7. Cold Start + Launch Hardening | 2/2 | Complete | 2026-02-21 |
+| 8. Tech Debt Cleanup | 0/1 | Planned | — |
