@@ -10,6 +10,13 @@ class TraceSearchRequest(BaseModel):
     limit: int = Field(default=10, ge=1, le=50, description="Max results to return")
 
 
+class RelatedTrace(BaseModel):
+    id: uuid.UUID
+    title: str
+    relationship_type: str
+    strength: float
+
+
 class TraceSearchResult(BaseModel):
     id: uuid.UUID
     title: str
@@ -22,6 +29,9 @@ class TraceSearchResult(BaseModel):
     combined_score: float    # trust-weighted final score
     contributor_id: uuid.UUID
     created_at: datetime
+    retrieval_count: int = 0
+    depth_score: int = 0
+    related_traces: list[RelatedTrace] = []
 
 
 class TraceSearchResponse(BaseModel):

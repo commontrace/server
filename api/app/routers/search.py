@@ -9,8 +9,10 @@ Search modes:
   - Both empty: 422 validation error
 """
 
+import asyncio
 import math
 import time
+import uuid as uuid_mod
 import structlog
 from typing import Optional
 from fastapi import APIRouter, HTTPException
@@ -19,10 +21,17 @@ from sqlalchemy.orm import selectinload
 from prometheus_client import Counter, Histogram
 from app.dependencies import CurrentUser, DbSession
 from app.middleware.rate_limiter import ReadRateLimit
-from app.schemas.search import TraceSearchRequest, TraceSearchResult, TraceSearchResponse
+from app.schemas.search import (
+    RelatedTrace,
+    TraceSearchRequest,
+    TraceSearchResult,
+    TraceSearchResponse,
+)
 from app.models.trace import Trace
 from app.models.tag import Tag, trace_tags
+from app.services.decay import temporal_decay_factor
 from app.services.embedding import EmbeddingService, EmbeddingSkippedError
+from app.services.retrieval import record_co_retrievals, record_retrieval_logs, record_retrievals
 from app.services.tags import normalize_tag
 
 log = structlog.get_logger()
@@ -123,17 +132,24 @@ async def search_traces(
         result = await db.execute(stmt)
         rows = result.all()  # list of Row(Trace, distance)
 
-        # Trust-weighted re-ranking
-        ranked = sorted(
-            rows,
-            key=lambda r: (1.0 - r.distance) * math.log1p(max(0.0, r.Trace.trust_score) + 1),
-            reverse=True,
-        )[:body.limit]
+        # Trust-weighted re-ranking with depth and temporal decay
+        def _rank_score(r):
+            sim = 1.0 - r.distance
+            trust = math.log1p(max(0.0, r.Trace.trust_score) + 1)
+            depth = 1 + 0.1 * r.Trace.depth_score
+            decay = temporal_decay_factor(
+                r.Trace.created_at,
+                r.Trace.last_retrieved_at,
+                r.Trace.half_life_days,
+            )
+            return sim * trust * depth * decay
+
+        ranked = sorted(rows, key=_rank_score, reverse=True)[:body.limit]
 
         # Step F: Serialize response — Path 1 (semantic)
         for row in ranked:
             similarity = 1.0 - row.distance
-            combined = similarity * math.log1p(max(0.0, row.Trace.trust_score) + 1)
+            combined = _rank_score(row)
             tag_names = [tag.name for tag in row.Trace.tags]
             results.append(
                 TraceSearchResult(
@@ -148,18 +164,20 @@ async def search_traces(
                     combined_score=combined,
                     contributor_id=row.Trace.contributor_id,
                     created_at=row.Trace.created_at,
+                    retrieval_count=row.Trace.retrieval_count,
+                    depth_score=row.Trace.depth_score,
                 )
             )
 
     else:
         # Step C Path 2: Tag-only search (q is None)
-        # Note: does NOT filter out embedding IS NULL traces — valid results for tag-only
+        # Over-fetch 100 for re-ranking with decay/depth, then trim to limit
         stmt = (
             select(Trace)
             .where(Trace.is_flagged.is_(False))
             .options(selectinload(Trace.tags))
             .order_by(Trace.trust_score.desc())
-            .limit(body.limit)
+            .limit(100)
         )
 
         # Step D: Tag pre-filter (if tags provided) — Path 2
@@ -173,14 +191,22 @@ async def search_traces(
                 .having(func.count(func.distinct(Tag.id)) == len(normalized_tags))
             )
 
-        # Step E: Execute — Path 2 (already ordered by trust_score DESC, no re-ranking needed)
+        # Step E: Execute and re-rank with depth + decay
         result = await db.execute(stmt)
-        rows_tag_only = result.scalars().all()  # list of Trace
+        rows_tag_only = result.scalars().all()
+
+        def _tag_rank_score(t):
+            trust = math.log1p(max(0.0, t.trust_score) + 1)
+            depth = 1 + 0.1 * t.depth_score
+            decay = temporal_decay_factor(t.created_at, t.last_retrieved_at, t.half_life_days)
+            return trust * depth * decay
+
+        rows_tag_only = sorted(rows_tag_only, key=_tag_rank_score, reverse=True)[:body.limit]
 
         # Step F: Serialize response — Path 2 (tag-only)
         for trace in rows_tag_only:
             similarity = 0.0  # No semantic similarity in tag-only mode
-            combined = float(trace.trust_score)
+            combined = _tag_rank_score(trace)
             tag_names = [tag.name for tag in trace.tags]
             results.append(
                 TraceSearchResult(
@@ -195,8 +221,50 @@ async def search_traces(
                     combined_score=combined,
                     contributor_id=trace.contributor_id,
                     created_at=trace.created_at,
+                    retrieval_count=trace.retrieval_count,
+                    depth_score=trace.depth_score,
                 )
             )
+
+    # Fire-and-forget: record retrievals + co-retrieval patterns
+    if results:
+        trace_ids = [r.id for r in results]
+        search_session_id = str(uuid_mod.uuid4())
+        asyncio.create_task(record_retrievals(trace_ids))
+        asyncio.create_task(record_retrieval_logs(trace_ids, search_session_id))
+        asyncio.create_task(record_co_retrievals(trace_ids))
+
+    # Attach related traces (top 3 per result by relationship strength)
+    if results:
+        result_ids = [r.id for r in results]
+        related_rows = await db.execute(
+            text(
+                "SELECT tr.source_trace_id, tr.target_trace_id, tr.relationship_type, "
+                "tr.strength, t.title "
+                "FROM trace_relationships tr "
+                "JOIN traces t ON t.id = tr.target_trace_id "
+                "WHERE tr.source_trace_id = ANY(:ids) "
+                "ORDER BY tr.strength DESC"
+            ),
+            {"ids": result_ids},
+        )
+        # Group by source, take top 3 per result
+        related_by_source: dict[str, list[RelatedTrace]] = {}
+        for row in related_rows:
+            src = str(row.source_trace_id)
+            if src not in related_by_source:
+                related_by_source[src] = []
+            if len(related_by_source[src]) < 3:
+                related_by_source[src].append(
+                    RelatedTrace(
+                        id=row.target_trace_id,
+                        title=row.title,
+                        relationship_type=row.relationship_type,
+                        strength=row.strength,
+                    )
+                )
+        for r in results:
+            r.related_traces = related_by_source.get(str(r.id), [])
 
     # Step G: Search metrics instrumentation
     search_duration.observe(time.monotonic() - start)

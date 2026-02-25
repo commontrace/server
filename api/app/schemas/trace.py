@@ -18,6 +18,9 @@ class TraceCreate(BaseModel):
     agent_model: Optional[str] = Field(None, max_length=100)
     agent_version: Optional[str] = Field(None, max_length=50)
     metadata_json: Optional[dict] = None
+    supersedes_trace_id: Optional[uuid.UUID] = None
+    review_after: Optional[datetime] = None
+    watch_condition: Optional[str] = Field(None, max_length=500)
 
 
 class TraceResponse(BaseModel):
@@ -33,6 +36,7 @@ class TraceResponse(BaseModel):
     trust_score: float
     confirmation_count: int
     tags: list[str] = Field(default_factory=list)
+    depth_score: int = 0
     is_stale: bool = False
     is_flagged: bool = False
     contributor_id: uuid.UUID

@@ -65,6 +65,33 @@ class Trace(Base):
         DateTime(timezone=True), nullable=True
     )
 
+    # Retrieval tracking and encoding (migration 0004)
+    retrieval_count: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0"
+    )
+    last_retrieved_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    depth_score: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="0"
+    )
+    half_life_days: Mapped[Optional[int]] = mapped_column(
+        Integer, nullable=True
+    )
+
+    # Trace type: 'episodic' (user-submitted) or 'pattern' (consolidation-generated)
+    trace_type: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="episodic"
+    )
+
+    # Prospective memory (migration 0006)
+    review_after: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    watch_condition: Mapped[Optional[str]] = mapped_column(
+        String(500), nullable=True
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

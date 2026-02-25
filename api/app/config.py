@@ -15,5 +15,15 @@ class Settings(BaseSettings):
     api_key_header_name: str = "X-API-Key"
     openai_api_key: str = ""
 
+    # Temporal decay
+    temporal_decay_default_half_life_days: int = 365
+
+    # Consolidation worker
+    consolidation_interval_hours: int = 24
+    consolidation_similarity_threshold: float = 0.85
+    consolidation_cluster_min_size: int = 5
+    consolidation_trust_decay_factor: float = 0.995
+    consolidation_stale_age_days: int = 180
+
 
 settings = Settings()

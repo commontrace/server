@@ -10,6 +10,7 @@ from app.logging_config import configure_logging
 from app.metrics import metrics_endpoint
 from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.routers import amendments, auth, moderation, reputation, search, tags, traces, votes
+from app.worker.consolidation_worker import consolidation_worker_loop
 from app.worker.embedding_worker import process_batch
 from app.services.embedding import EmbeddingService
 
@@ -44,12 +45,14 @@ async def lifespan(app: FastAPI):
         settings.redis_url, encoding="utf-8", decode_responses=True
     )
 
-    # Start embedding worker as background task
+    # Start background workers
     worker_task = asyncio.create_task(_embedding_worker_loop())
+    consolidation_task = asyncio.create_task(consolidation_worker_loop())
     try:
         yield
     finally:
         worker_task.cancel()
+        consolidation_task.cancel()
         # Shutdown: close Redis connection
         await app.state.redis.aclose()
 

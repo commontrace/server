@@ -7,7 +7,7 @@ GET  /api/v1/traces/{id} -- retrieve a trace with its tags
 import uuid
 
 from fastapi import APIRouter, HTTPException
-from sqlalchemy import insert, select
+from sqlalchemy import insert, select, text
 from sqlalchemy.orm import selectinload
 
 from app.dependencies import CurrentUser, DbSession, RequireEmail
@@ -15,6 +15,9 @@ from app.middleware.rate_limiter import ReadRateLimit, WriteRateLimit
 from app.models.tag import Tag, trace_tags
 from app.models.trace import Trace
 from app.schemas.trace import TraceAccepted, TraceCreate, TraceResponse
+
+from app.services.decay import compute_half_life
+from app.services.enrichment import auto_enrich_metadata, compute_depth_score
 from app.services.scanner import SecretDetectedError, scan_trace_submission
 from app.services.staleness import check_trace_staleness
 from app.services.tags import normalize_tag, validate_tag
@@ -89,8 +92,34 @@ async def submit_trace(
             insert(trace_tags).values(trace_id=trace.id, tag_id=tag.id)
         )
 
+    # Enrich metadata with auto-detected language/framework, compute depth and decay rate
+    tag_names = [normalize_tag(t) for t in body.tags if validate_tag(normalize_tag(t))]
+    enriched = auto_enrich_metadata(body.metadata_json, body.solution_text)
+    trace.metadata_json = enriched
+    trace.depth_score = compute_depth_score(enriched, body.solution_text)
+    trace.half_life_days = compute_half_life(tag_names)
+
+    # Prospective memory fields
+    if body.review_after:
+        trace.review_after = body.review_after
+    if body.watch_condition:
+        trace.watch_condition = body.watch_condition
+
     await db.commit()
     await db.refresh(trace)
+
+    # Create SUPERSEDES relationship if specified
+    if body.supersedes_trace_id:
+        await db.execute(
+            text(
+                "INSERT INTO trace_relationships "
+                "(id, source_trace_id, target_trace_id, relationship_type, strength) "
+                "VALUES (gen_random_uuid(), :new_id, :old_id, 'SUPERSEDES', 1.0) "
+                "ON CONFLICT (source_trace_id, target_trace_id, relationship_type) DO NOTHING"
+            ),
+            {"new_id": str(trace.id), "old_id": str(body.supersedes_trace_id)},
+        )
+        await db.commit()
 
     return TraceAccepted(id=trace.id, status="pending")
 
@@ -128,6 +157,7 @@ async def get_trace(
         trust_score=trace.trust_score,
         confirmation_count=trace.confirmation_count,
         tags=tag_names,
+        depth_score=trace.depth_score,
         is_stale=trace.is_stale,
         is_flagged=trace.is_flagged,
         contributor_id=trace.contributor_id,
