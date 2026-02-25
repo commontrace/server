@@ -1,6 +1,8 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 import redis.asyncio as aioredis
+import structlog
 from fastapi import FastAPI
 
 from app.config import settings
@@ -8,6 +10,28 @@ from app.logging_config import configure_logging
 from app.metrics import metrics_endpoint
 from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.routers import amendments, auth, moderation, reputation, search, tags, traces, votes
+from app.worker.embedding_worker import process_batch
+from app.services.embedding import EmbeddingService
+
+log = structlog.get_logger(__name__)
+
+WORKER_POLL_INTERVAL = 5
+
+
+async def _embedding_worker_loop():
+    """Background embedding worker — polls for unembedded traces."""
+    svc = EmbeddingService()
+    log.info("embedding_worker_started", poll_interval=WORKER_POLL_INTERVAL)
+    while True:
+        try:
+            from app.database import async_session_factory
+            async with async_session_factory() as db:
+                count = await process_batch(db, svc)
+                if count > 0:
+                    log.info("embedding_batch_processed", count=count)
+        except Exception as exc:
+            log.error("embedding_worker_error", error=str(exc))
+        await asyncio.sleep(WORKER_POLL_INTERVAL)
 
 
 @asynccontextmanager
@@ -19,9 +43,13 @@ async def lifespan(app: FastAPI):
     app.state.redis = aioredis.from_url(
         settings.redis_url, encoding="utf-8", decode_responses=True
     )
+
+    # Start embedding worker as background task
+    worker_task = asyncio.create_task(_embedding_worker_loop())
     try:
         yield
     finally:
+        worker_task.cancel()
         # Shutdown: close Redis connection
         await app.state.redis.aclose()
 
