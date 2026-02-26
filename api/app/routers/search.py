@@ -29,10 +29,21 @@ from app.schemas.search import (
 )
 from app.models.trace import Trace
 from app.models.tag import Tag, trace_tags
+from app.services.context import compute_context_alignment
 from app.services.decay import temporal_decay_factor
 from app.services.embedding import EmbeddingService, EmbeddingSkippedError
 from app.services.retrieval import record_co_retrievals, record_retrieval_logs, record_retrievals
 from app.services.tags import normalize_tag
+
+# Track background tasks to prevent GC before completion
+_background_tasks: set[asyncio.Task] = set()
+
+
+def _track_task(coro) -> None:
+    """Create a tracked background task that removes itself when done."""
+    task = asyncio.create_task(coro)
+    _background_tasks.add(task)
+    task.add_done_callback(_background_tasks.discard)
 
 log = structlog.get_logger()
 _embedding_svc = EmbeddingService()
@@ -98,6 +109,9 @@ async def search_traces(
     if query_vector is not None:
         await db.execute(text("SET LOCAL hnsw.ef_search = 64"))
 
+    # Extract searcher context for relevance boosting
+    searcher_fp = body.context
+
     # Normalize tags for consistent matching
     normalized_tags = [normalize_tag(t) for t in body.tags]
 
@@ -132,7 +146,7 @@ async def search_traces(
         result = await db.execute(stmt)
         rows = result.all()  # list of Row(Trace, distance)
 
-        # Trust-weighted re-ranking with depth and temporal decay
+        # Trust-weighted re-ranking with depth, temporal decay, context, and convergence
         def _rank_score(r):
             sim = 1.0 - r.distance
             trust = math.log1p(max(0.0, r.Trace.trust_score) + 1)
@@ -142,7 +156,14 @@ async def search_traces(
                 r.Trace.last_retrieved_at,
                 r.Trace.half_life_days,
             )
-            return sim * trust * depth * decay
+            ctx_boost = 1.0
+            if searcher_fp and r.Trace.context_fingerprint:
+                alignment = compute_context_alignment(searcher_fp, r.Trace.context_fingerprint)
+                ctx_boost = 1.0 + 0.3 * alignment
+            convergence_boost = 1.0
+            if r.Trace.convergence_level is not None:
+                convergence_boost = 1.0 + 0.05 * (4 - r.Trace.convergence_level)
+            return sim * trust * depth * decay * ctx_boost * convergence_boost
 
         ranked = sorted(rows, key=_rank_score, reverse=True)[:body.limit]
 
@@ -166,6 +187,8 @@ async def search_traces(
                     created_at=row.Trace.created_at,
                     retrieval_count=row.Trace.retrieval_count,
                     depth_score=row.Trace.depth_score,
+                    context_fingerprint=row.Trace.context_fingerprint,
+                    convergence_level=row.Trace.convergence_level,
                 )
             )
 
@@ -199,7 +222,14 @@ async def search_traces(
             trust = math.log1p(max(0.0, t.trust_score) + 1)
             depth = 1 + 0.1 * t.depth_score
             decay = temporal_decay_factor(t.created_at, t.last_retrieved_at, t.half_life_days)
-            return trust * depth * decay
+            ctx_boost = 1.0
+            if searcher_fp and t.context_fingerprint:
+                alignment = compute_context_alignment(searcher_fp, t.context_fingerprint)
+                ctx_boost = 1.0 + 0.3 * alignment
+            convergence_boost = 1.0
+            if t.convergence_level is not None:
+                convergence_boost = 1.0 + 0.05 * (4 - t.convergence_level)
+            return trust * depth * decay * ctx_boost * convergence_boost
 
         rows_tag_only = sorted(rows_tag_only, key=_tag_rank_score, reverse=True)[:body.limit]
 
@@ -223,16 +253,19 @@ async def search_traces(
                     created_at=trace.created_at,
                     retrieval_count=trace.retrieval_count,
                     depth_score=trace.depth_score,
+                    context_fingerprint=trace.context_fingerprint,
+                    convergence_level=trace.convergence_level,
                 )
             )
 
     # Fire-and-forget: record retrievals + co-retrieval patterns
+    # Tasks are tracked in _background_tasks set to prevent GC before completion
     if results:
         trace_ids = [r.id for r in results]
         search_session_id = str(uuid_mod.uuid4())
-        asyncio.create_task(record_retrievals(trace_ids))
-        asyncio.create_task(record_retrieval_logs(trace_ids, search_session_id))
-        asyncio.create_task(record_co_retrievals(trace_ids))
+        _track_task(record_retrievals(trace_ids))
+        _track_task(record_retrieval_logs(trace_ids, search_session_id))
+        _track_task(record_co_retrievals(trace_ids))
 
     # Attach related traces (top 3 per result by relationship strength)
     if results:

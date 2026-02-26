@@ -16,6 +16,7 @@ from app.models.tag import Tag, trace_tags
 from app.models.trace import Trace
 from app.schemas.trace import TraceAccepted, TraceCreate, TraceResponse
 
+from app.services.context import build_context_fingerprint
 from app.services.decay import compute_half_life
 from app.services.enrichment import auto_enrich_metadata, compute_depth_score
 from app.services.scanner import SecretDetectedError, scan_trace_submission
@@ -98,6 +99,7 @@ async def submit_trace(
     trace.metadata_json = enriched
     trace.depth_score = compute_depth_score(enriched, body.solution_text)
     trace.half_life_days = compute_half_life(tag_names)
+    trace.context_fingerprint = build_context_fingerprint(enriched, tag_names)
 
     # Prospective memory fields
     if body.review_after:
@@ -158,8 +160,13 @@ async def get_trace(
         confirmation_count=trace.confirmation_count,
         tags=tag_names,
         depth_score=trace.depth_score,
+        retrieval_count=trace.retrieval_count,
+        half_life_days=trace.half_life_days,
+        trace_type=trace.trace_type,
         is_stale=trace.is_stale,
         is_flagged=trace.is_flagged,
+        context_fingerprint=trace.context_fingerprint,
+        convergence_level=trace.convergence_level,
         contributor_id=trace.contributor_id,
         created_at=trace.created_at,
         updated_at=trace.updated_at,

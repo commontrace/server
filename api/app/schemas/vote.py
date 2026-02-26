@@ -17,6 +17,7 @@ class VoteCreate(BaseModel):
     vote_type: str  # "up" or "down"
     feedback_tag: Optional[str] = None
     feedback_text: Optional[str] = None
+    voter_context: Optional[dict] = None  # voter's environment context for cross-context weighting
 
     @model_validator(mode="after")
     def downvote_requires_tag(self) -> "VoteCreate":

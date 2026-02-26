@@ -37,8 +37,13 @@ class TraceResponse(BaseModel):
     confirmation_count: int
     tags: list[str] = Field(default_factory=list)
     depth_score: int = 0
+    retrieval_count: int = 0
+    half_life_days: Optional[int] = None
+    trace_type: str = "episodic"
     is_stale: bool = False
     is_flagged: bool = False
+    context_fingerprint: Optional[dict] = None
+    convergence_level: Optional[int] = None
     contributor_id: uuid.UUID
     created_at: datetime
     updated_at: datetime

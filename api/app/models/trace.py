@@ -92,6 +92,18 @@ class Trace(Base):
         String(500), nullable=True
     )
 
+    # Context fingerprint and embedding (migration 0007)
+    context_fingerprint: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    context_embedding: Mapped[Optional[list[float]]] = mapped_column(
+        Vector(1536), nullable=True
+    )
+
+    # Convergence detection (migration 0008)
+    convergence_level: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
+    convergence_cluster_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), nullable=True
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

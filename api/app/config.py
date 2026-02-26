@@ -20,9 +20,6 @@ class Settings(BaseSettings):
 
     # Consolidation worker
     consolidation_interval_hours: int = 24
-    consolidation_similarity_threshold: float = 0.85
-    consolidation_cluster_min_size: int = 5
-    consolidation_trust_decay_factor: float = 0.995
     consolidation_stale_age_days: int = 180
 
 

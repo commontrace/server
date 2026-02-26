@@ -26,6 +26,7 @@ from app.config import settings
 from app.models.reputation import CDR_UNIQUE_CONSTRAINT, ContributorDomainReputation
 from app.models.trace import Trace, TraceStatus
 from app.models.user import User
+from app.services.maturity import get_maturity_tier, get_validation_threshold
 
 
 def wilson_score_lower_bound(upvotes: int, total_votes: int) -> float:
@@ -107,10 +108,14 @@ async def apply_vote_to_trace(
 
     status, confirmation_count, trust_score = row
 
+    # Maturity-aware validation threshold — SEED tier needs fewer votes
+    tier = await get_maturity_tier(db)
+    threshold = get_validation_threshold(tier)
+
     # Promote if pending, threshold reached, and net positive trust
     if (
         status == TraceStatus.pending
-        and confirmation_count >= settings.validation_threshold
+        and confirmation_count >= threshold
         and trust_score > 0
     ):
         await db.execute(

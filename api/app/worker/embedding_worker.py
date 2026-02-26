@@ -14,6 +14,7 @@ from app.database import async_session_factory
 from app.logging_config import configure_logging
 from app.metrics import embeddings_processed, embedding_duration
 from app.models.trace import Trace
+from app.services.context import build_context_string
 from app.services.embedding import EmbeddingService, EmbeddingSkippedError, OPENAI_MODEL
 
 log = structlog.get_logger(__name__)
@@ -28,9 +29,17 @@ async def process_batch(db: AsyncSession, svc: EmbeddingService) -> int:
     Returns:
         Number of traces processed in this batch.
     """
+    # Fetch traces needing content embedding OR context embedding
+    from sqlalchemy import or_
+
     stmt = (
         select(Trace)
-        .where(Trace.embedding.is_(None))
+        .where(
+            or_(
+                Trace.embedding.is_(None),
+                (Trace.context_fingerprint.is_not(None)) & (Trace.context_embedding.is_(None)),
+            )
+        )
         .with_for_update(skip_locked=True)
         .limit(BATCH_SIZE)
     )
@@ -42,43 +51,83 @@ async def process_batch(db: AsyncSession, svc: EmbeddingService) -> int:
 
     processed = 0
     for trace in traces:
-        text = f"{trace.title}\n{trace.context_text}\n{trace.solution_text}"
-        start = time.monotonic()
-        try:
-            vector, model_id, model_version = await svc.embed(text)
-        except EmbeddingSkippedError:
-            log.warning(
-                "embedding_skipped_no_api_key",
-                message="OPENAI_API_KEY not configured — skipping entire batch.",
-            )
-            embeddings_processed.labels(model="none", status="skipped").inc()
-            return 0
-        except Exception as exc:
-            log.error(
-                "embedding_error",
-                trace_id=str(trace.id),
-                error=str(exc),
-            )
-            embeddings_processed.labels(model=OPENAI_MODEL, status="error").inc()
-            embedding_duration.labels(model=OPENAI_MODEL).observe(time.monotonic() - start)
-            continue
+        # Content embedding (if missing)
+        if trace.embedding is None:
+            text = f"{trace.title}\n{trace.context_text}\n{trace.solution_text}"
+            start = time.monotonic()
+            try:
+                vector, model_id, model_version = await svc.embed(text)
+            except EmbeddingSkippedError:
+                log.warning(
+                    "embedding_skipped_no_api_key",
+                    message="OPENAI_API_KEY not configured — skipping entire batch.",
+                )
+                embeddings_processed.labels(model="none", status="skipped").inc()
+                return 0
+            except Exception as exc:
+                log.error(
+                    "embedding_error",
+                    trace_id=str(trace.id),
+                    error=str(exc),
+                )
+                embeddings_processed.labels(model=OPENAI_MODEL, status="error").inc()
+                embedding_duration.labels(model=OPENAI_MODEL).observe(time.monotonic() - start)
+                continue
 
-        embeddings_processed.labels(model=model_id, status="success").inc()
-        embedding_duration.labels(model=model_id).observe(time.monotonic() - start)
+            embeddings_processed.labels(model=model_id, status="success").inc()
+            embedding_duration.labels(model=model_id).observe(time.monotonic() - start)
 
-        update_stmt = (
-            update(Trace)
-            .where(Trace.id == trace.id)
-            .values(
+            values = dict(
                 embedding=vector,
                 embedding_model_id=model_id,
                 embedding_model_version=model_version,
             )
-            .execution_options(synchronize_session=False)
-        )
-        await db.execute(update_stmt)
-        log.info("embedding_stored", trace_id=str(trace.id), model=model_id)
-        processed += 1
+
+            # Also embed context if fingerprint exists
+            if trace.context_fingerprint and trace.context_embedding is None:
+                ctx_text = build_context_string(trace.context_fingerprint)
+                try:
+                    ctx_vector, _, _ = await svc.embed(ctx_text)
+                    values["context_embedding"] = ctx_vector
+                    log.info("context_embedding_stored", trace_id=str(trace.id))
+                except Exception as exc:
+                    log.error("context_embedding_error", trace_id=str(trace.id), error=str(exc))
+
+            update_stmt = (
+                update(Trace)
+                .where(Trace.id == trace.id)
+                .values(**values)
+                .execution_options(synchronize_session=False)
+            )
+            await db.execute(update_stmt)
+            log.info("embedding_stored", trace_id=str(trace.id), model=model_id)
+            processed += 1
+
+        # Context embedding only (content already embedded)
+        elif trace.context_fingerprint and trace.context_embedding is None:
+            ctx_text = build_context_string(trace.context_fingerprint)
+            start = time.monotonic()
+            try:
+                ctx_vector, model_id, _ = await svc.embed(ctx_text)
+            except EmbeddingSkippedError:
+                embeddings_processed.labels(model="none", status="skipped").inc()
+                return 0
+            except Exception as exc:
+                log.error("context_embedding_error", trace_id=str(trace.id), error=str(exc))
+                continue
+
+            embeddings_processed.labels(model=model_id, status="success").inc()
+            embedding_duration.labels(model=model_id).observe(time.monotonic() - start)
+
+            update_stmt = (
+                update(Trace)
+                .where(Trace.id == trace.id)
+                .values(context_embedding=ctx_vector)
+                .execution_options(synchronize_session=False)
+            )
+            await db.execute(update_stmt)
+            log.info("context_embedding_stored", trace_id=str(trace.id))
+            processed += 1
 
     await db.commit()
     return processed

@@ -6,6 +6,7 @@ Runs periodically to maintain knowledge health:
 3. Co-retrieval relationship building from retrieval logs
 4. Log pruning (removes retrieval logs older than 30 days)
 5. Prospective memory checks (marks traces stale when review_after passes)
+6. Convergence detection (clusters similar traces, classifies convergence level)
 
 Pattern extraction (cluster similar traces, generate pattern traces via LLM)
 is deferred until the knowledge base reaches sufficient scale.
@@ -21,7 +22,8 @@ from app.config import settings
 from app.database import async_session_factory
 from app.models.consolidation_run import ConsolidationRun
 from app.models.trace import Trace
-from app.services.maturity import get_decay_multiplier, get_maturity_tier, should_apply_temporal_decay
+from app.services.convergence import detect_convergence_clusters
+from app.services.maturity import MaturityTier, get_decay_multiplier, get_maturity_tier, should_apply_temporal_decay
 
 log = structlog.get_logger()
 
@@ -138,6 +140,11 @@ async def _check_prospective_memory(session) -> int:
     return result.rowcount
 
 
+async def _detect_convergence(session) -> int:
+    """Detect convergence clusters among similar traces."""
+    return await detect_convergence_clusters(session)
+
+
 async def run_consolidation_cycle() -> dict:
     """Execute one full consolidation cycle.
 
@@ -164,31 +171,46 @@ async def run_consolidation_cycle() -> dict:
         session.add(run)
         await session.flush()
 
-        try:
-            # Determine maturity tier for adaptive behavior
-            tier = await get_maturity_tier(session)
-            decay_factor = get_decay_multiplier(tier)
-            stats["maturity_tier"] = tier.value
+        # Determine maturity tier for adaptive behavior
+        tier = await get_maturity_tier(session)
+        decay_factor = get_decay_multiplier(tier)
+        stats["maturity_tier"] = tier.value
+        errors = []
 
-            stats["trust_downscaled"] = await _trust_downscaling(session, decay_factor)
-            stats.update(await _stale_trace_detection(session))
-            stats["co_retrieval_links"] = await _build_co_retrieval_links(session)
-            stats["logs_pruned"] = await _prune_retrieval_logs(session)
-            stats["prospective_staled"] = await _check_prospective_memory(session)
+        # Each job runs independently — one failure doesn't block others
+        jobs: list[tuple[str, object]] = [
+            ("trust_downscaled", _trust_downscaling(session, decay_factor)),
+            ("stale_detection", _stale_trace_detection(session)),
+            ("co_retrieval_links", _build_co_retrieval_links(session)),
+            ("logs_pruned", _prune_retrieval_logs(session)),
+            ("prospective_staled", _check_prospective_memory(session)),
+        ]
 
-            run.status = "completed"
-            run.completed_at = datetime.now(timezone.utc)
-            run.stats_json = stats
-            await session.commit()
+        # Convergence detection only runs in GROWING and MATURE tiers
+        if tier in (MaturityTier.GROWING, MaturityTier.MATURE):
+            jobs.append(("convergence_detected", _detect_convergence(session)))
 
+        for job_name, coro in jobs:
+            try:
+                result = await coro
+                if isinstance(result, dict):
+                    stats.update(result)
+                else:
+                    stats[job_name] = result
+            except Exception:
+                log.error("consolidation_job_failed", job=job_name, exc_info=True)
+                stats[job_name] = "error"
+                errors.append(job_name)
+
+        run.status = "completed" if not errors else "partial"
+        run.completed_at = datetime.now(timezone.utc)
+        run.stats_json = stats
+        await session.commit()
+
+        if errors:
+            log.warning("consolidation_partial", failed_jobs=errors, stats=stats)
+        else:
             log.info("consolidation_completed", stats=stats)
-        except Exception:
-            run.status = "failed"
-            run.completed_at = datetime.now(timezone.utc)
-            run.stats_json = {"error": "cycle_failed"}
-            await session.commit()
-            log.error("consolidation_failed", exc_info=True)
-            raise
 
     return stats
 

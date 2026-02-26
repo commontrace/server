@@ -15,6 +15,7 @@ from app.models.tag import Tag, trace_tags
 from app.models.trace import Trace
 from app.models.vote import Vote
 from app.schemas.vote import VoteCreate, VoteResponse
+from app.services.context import compute_context_alignment
 from app.services.trust import (
     apply_vote_to_trace,
     get_vote_weight_for_trace,
@@ -66,10 +67,14 @@ async def cast_vote(
     if trace.contributor_id == user.id:
         raise HTTPException(status_code=403, detail="Cannot vote on your own trace")
 
-    # Build context_json — stores feedback_tag for downvotes
+    # Build context_json — stores feedback_tag for downvotes and voter_context
     context_json = None
-    if body.feedback_tag:
-        context_json = {"feedback_tag": body.feedback_tag}
+    if body.feedback_tag or body.voter_context:
+        context_json = {}
+        if body.feedback_tag:
+            context_json["feedback_tag"] = body.feedback_tag
+        if body.voter_context:
+            context_json["voter_context"] = body.voter_context
 
     # Create the vote row
     vote = Vote(
@@ -97,6 +102,15 @@ async def cast_vote(
     vote_weight = await get_vote_weight_for_trace(
         db=db, voter_id=user.id, trace_tags=tag_names,
     )
+
+    # Context-aware weight adjustment for downvotes
+    # Low alignment = different context = reduce downvote impact
+    if body.vote_type == "down" and body.voter_context and trace.context_fingerprint:
+        alignment = compute_context_alignment(body.voter_context, trace.context_fingerprint)
+        # alignment 0.0 → multiplier 0.3 (70% reduction)
+        # alignment 1.0 → multiplier 1.0 (no reduction)
+        context_multiplier = 0.3 + 0.7 * alignment
+        vote_weight *= context_multiplier
 
     # Apply vote to trace trust score — atomic column-expression UPDATE
     await apply_vote_to_trace(
