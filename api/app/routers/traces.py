@@ -18,7 +18,7 @@ from app.schemas.trace import TraceAccepted, TraceCreate, TraceResponse
 
 from app.services.context import build_context_fingerprint
 from app.services.decay import compute_half_life
-from app.services.enrichment import auto_enrich_metadata, compute_depth_score
+from app.services.enrichment import auto_enrich_metadata, compute_depth_score, compute_somatic_intensity
 from app.services.scanner import SecretDetectedError, scan_trace_submission
 from app.services.staleness import check_trace_staleness
 from app.services.tags import normalize_tag, validate_tag
@@ -98,6 +98,7 @@ async def submit_trace(
     enriched = auto_enrich_metadata(body.metadata_json, body.solution_text)
     trace.metadata_json = enriched
     trace.depth_score = compute_depth_score(enriched, body.solution_text)
+    trace.somatic_intensity = compute_somatic_intensity(enriched)
     trace.half_life_days = compute_half_life(tag_names)
     trace.context_fingerprint = build_context_fingerprint(enriched, tag_names)
     trace.memory_temperature = "WARM"  # New traces start warm
@@ -177,6 +178,7 @@ async def get_trace(
         confirmation_count=trace.confirmation_count,
         tags=tag_names,
         depth_score=trace.depth_score,
+        somatic_intensity=trace.somatic_intensity,
         retrieval_count=trace.retrieval_count,
         half_life_days=trace.half_life_days,
         trace_type=trace.trace_type,

@@ -104,6 +104,12 @@ class Trace(Base):
         UUID(as_uuid=True), nullable=True
     )
 
+    # Somatic intensity — Damasio-inspired importance marker (migration 0011)
+    # Persists how intensely knowledge was learned (0.0-1.0)
+    somatic_intensity: Mapped[float] = mapped_column(
+        Float, nullable=False, server_default="0.0"
+    )
+
     # Memory temperature and bi-temporal validity (migration 0009)
     memory_temperature: Mapped[Optional[str]] = mapped_column(
         String(10), nullable=True

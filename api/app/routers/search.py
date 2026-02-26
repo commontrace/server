@@ -139,7 +139,8 @@ async def _apply_spreading_activation(
             # (computing cosine in Python is too slow for a hot path)
             pass
 
-        base = trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor
+        somatic_mult = 1.0 + 0.3 * trace.somatic_intensity
+        base = trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor * somatic_mult
 
         # Activation boost from source
         source_score = score_by_id.get(n["source_trace_id"], 0.0)
@@ -162,6 +163,7 @@ async def _apply_spreading_activation(
                 created_at=trace.created_at,
                 retrieval_count=trace.retrieval_count,
                 depth_score=trace.depth_score,
+                somatic_intensity=trace.somatic_intensity,
                 context_fingerprint=trace.context_fingerprint,
                 convergence_level=trace.convergence_level,
                 memory_temperature=trace.memory_temperature,
@@ -286,7 +288,8 @@ async def search_traces(
             validity_factor = 1.0
             if r.Trace.valid_until is not None and r.Trace.valid_until < now_utc:
                 validity_factor = 0.5
-            return sim * trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor
+            somatic_mult = 1.0 + 0.3 * r.Trace.somatic_intensity
+            return sim * trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor * somatic_mult
 
         ranked = sorted(rows, key=_rank_score, reverse=True)[:body.limit]
 
@@ -310,6 +313,7 @@ async def search_traces(
                     created_at=row.Trace.created_at,
                     retrieval_count=row.Trace.retrieval_count,
                     depth_score=row.Trace.depth_score,
+                    somatic_intensity=row.Trace.somatic_intensity,
                     context_fingerprint=row.Trace.context_fingerprint,
                     convergence_level=row.Trace.convergence_level,
                     memory_temperature=row.Trace.memory_temperature,
@@ -366,7 +370,8 @@ async def search_traces(
             validity_factor = 1.0
             if t.valid_until is not None and t.valid_until < now_utc:
                 validity_factor = 0.5
-            return trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor
+            somatic_mult = 1.0 + 0.3 * t.somatic_intensity
+            return trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor * somatic_mult
 
         rows_tag_only = sorted(rows_tag_only, key=_tag_rank_score, reverse=True)[:body.limit]
 
@@ -390,6 +395,7 @@ async def search_traces(
                     created_at=trace.created_at,
                     retrieval_count=trace.retrieval_count,
                     depth_score=trace.depth_score,
+                    somatic_intensity=trace.somatic_intensity,
                     context_fingerprint=trace.context_fingerprint,
                     convergence_level=trace.convergence_level,
                     memory_temperature=trace.memory_temperature,

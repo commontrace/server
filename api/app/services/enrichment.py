@@ -123,6 +123,54 @@ def compute_depth_score(metadata: Optional[dict], solution_text: str) -> int:
     return score
 
 
+def compute_somatic_intensity(metadata: Optional[dict]) -> float:
+    """Compute initial somatic intensity from detection metadata (0.0-1.0).
+
+    Damasio-inspired: how intensely was this knowledge learned?
+    Higher intensity = harder-won knowledge = higher retrieval priority.
+
+    Detection metadata keys (set by skill stop hook):
+    - detection_pattern: str — which pattern triggered contribution
+    - error_count: int — errors encountered during resolution
+    - time_to_resolution_minutes: float — time invested
+    - iteration_count: int — edit iterations on the same files
+    """
+    meta = metadata or {}
+    pattern = meta.get("detection_pattern", "")
+
+    # Base intensity from pattern type
+    PATTERN_BASE = {
+        "error_resolution": 0.6,
+        "security_hardening": 0.8,
+        "approach_reversal": 0.5,
+        "prediction_error": 0.7,
+        "dependency_resolution": 0.4,
+        "test_fix_cycle": 0.4,
+        "migration_pattern": 0.5,
+        "user_correction": 0.5,
+        "infra_discovery": 0.4,
+        "research_then_implement": 0.3,
+        "config_discovery": 0.3,
+        "cross_file_breadth": 0.2,
+    }
+    intensity = PATTERN_BASE.get(pattern, 0.2)
+
+    # Amplify by effort signals
+    errors = meta.get("error_count", 0)
+    if isinstance(errors, (int, float)):
+        intensity += min(0.2, errors * 0.03)
+
+    time_min = meta.get("time_to_resolution_minutes", 0)
+    if isinstance(time_min, (int, float)):
+        intensity += min(0.15, time_min * 0.005)
+
+    iterations = meta.get("iteration_count", 0)
+    if isinstance(iterations, (int, float)):
+        intensity += min(0.1, iterations * 0.01)
+
+    return min(1.0, intensity)
+
+
 def auto_enrich_metadata(metadata: Optional[dict], solution_text: str) -> dict:
     """Auto-detect language, framework, and versions from solution text.
 
