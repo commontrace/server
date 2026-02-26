@@ -22,6 +22,7 @@ from app.config import settings
 from app.database import async_session_factory
 from app.models.consolidation_run import ConsolidationRun
 from app.models.trace import Trace
+
 from app.services.convergence import detect_convergence_clusters
 from app.services.maturity import MaturityTier, get_decay_multiplier, get_maturity_tier, should_apply_temporal_decay
 from app.services.temperature import classify_temperature
@@ -211,7 +212,7 @@ async def run_consolidation_cycle() -> dict:
             ("prospective_staled", _check_prospective_memory(session)),
         ]
 
-        # Convergence detection only runs in GROWING and MATURE tiers
+        # Convergence detection only in GROWING/MATURE
         if tier in (MaturityTier.GROWING, MaturityTier.MATURE):
             jobs.append(("convergence_detected", _detect_convergence(session)))
 
