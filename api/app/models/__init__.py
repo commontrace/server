@@ -8,6 +8,7 @@ from .reputation import ContributorDomainReputation
 from .trace_relationship import TraceRelationship, RelationshipType
 from .retrieval_log import RetrievalLog
 from .consolidation_run import ConsolidationRun
+from .trigger_stats import TriggerStats
 
 __all__ = [
     "Base",
@@ -24,4 +25,5 @@ __all__ = [
     "RelationshipType",
     "RetrievalLog",
     "ConsolidationRun",
+    "TriggerStats",
 ]

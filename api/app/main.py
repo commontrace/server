@@ -9,7 +9,7 @@ from app.config import settings
 from app.logging_config import configure_logging
 from app.metrics import metrics_endpoint
 from app.middleware.logging_middleware import RequestLoggingMiddleware
-from app.routers import amendments, auth, moderation, reputation, search, tags, traces, votes
+from app.routers import amendments, auth, moderation, reputation, search, tags, telemetry, traces, votes
 from app.worker.consolidation_worker import consolidation_worker_loop
 from app.worker.embedding_worker import process_batch
 from app.services.embedding import EmbeddingService
@@ -79,6 +79,9 @@ app.include_router(reputation.router)
 
 # Tags router (05-01)
 app.include_router(tags.router)
+
+# Telemetry router
+app.include_router(telemetry.router)
 
 # Prometheus metrics endpoint
 app.get("/metrics")(metrics_endpoint)
