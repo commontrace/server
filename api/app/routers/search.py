@@ -29,11 +29,19 @@ from app.schemas.search import (
 )
 from app.models.trace import Trace
 from app.models.tag import Tag, trace_tags
+from datetime import datetime, timezone
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.services.activation import (
+    fetch_activation_neighbors,
+    compute_activation_boost,
+    MAX_ACTIVATION_SOURCES,
+)
 from app.services.context import compute_context_alignment
 from app.services.decay import temporal_decay_factor
 from app.services.embedding import EmbeddingService, EmbeddingSkippedError
 from app.services.retrieval import record_co_retrievals, record_retrieval_logs, record_retrievals
 from app.services.tags import normalize_tag
+from app.services.temperature import get_temperature_multiplier
 
 # Track background tasks to prevent GC before completion
 _background_tasks: set[asyncio.Task] = set()
@@ -64,6 +72,108 @@ router = APIRouter(prefix="/api/v1", tags=["search"])
 
 # Over-fetch from ANN before re-ranking to ensure we have enough candidates
 SEARCH_LIMIT_ANN = 100
+
+
+async def _apply_spreading_activation(
+    db: AsyncSession,
+    results: list[TraceSearchResult],
+    limit: int,
+    searcher_fp: Optional[dict],
+    now_utc: datetime,
+    query_vector: Optional[list[float]],
+) -> list[TraceSearchResult]:
+    """Boost graph neighbors of top results via spreading activation.
+
+    Takes top-N results as activation sources, fetches their neighbors from
+    trace_relationships, scores each neighbor, and merges into results.
+    Short-circuits if no neighbors found. Adds at most 2 DB queries.
+    """
+    source_ids = [r.id for r in results[:MAX_ACTIVATION_SOURCES]]
+    existing_ids = {r.id for r in results}
+
+    neighbors = await fetch_activation_neighbors(db, source_ids, existing_ids)
+    if not neighbors:
+        return results
+
+    # Load full Trace objects for neighbors
+    neighbor_ids = [n["target_trace_id"] for n in neighbors]
+    neighbor_result = await db.execute(
+        select(Trace)
+        .where(Trace.id.in_(neighbor_ids))
+        .options(selectinload(Trace.tags))
+    )
+    neighbor_traces = {t.id: t for t in neighbor_result.scalars().all()}
+
+    # Build lookup: source score by ID for activation boost calculation
+    score_by_id = {r.id: r.combined_score for r in results}
+    max_score = max(score_by_id.values()) if score_by_id else 1.0
+    max_strength = max((n["strength"] for n in neighbors), default=1.0)
+
+    for n in neighbors:
+        trace = neighbor_traces.get(n["target_trace_id"])
+        if trace is None or trace.id in existing_ids:
+            continue
+
+        # Base score using same factors as main ranking
+        trust = math.log1p(max(0.0, trace.trust_score) + 1)
+        depth = 1 + 0.1 * trace.depth_score
+        decay = temporal_decay_factor(
+            trace.created_at, trace.last_retrieved_at, trace.half_life_days,
+        )
+        ctx_boost = 1.0
+        if searcher_fp and trace.context_fingerprint:
+            alignment = compute_context_alignment(searcher_fp, trace.context_fingerprint)
+            ctx_boost = 1.0 + 0.3 * alignment
+        convergence_boost = 1.0
+        if trace.convergence_level is not None:
+            convergence_boost = 1.0 + 0.05 * (4 - trace.convergence_level)
+        temp_mult = get_temperature_multiplier(trace.memory_temperature)
+        validity_factor = 1.0
+        if trace.valid_until is not None and trace.valid_until < now_utc:
+            validity_factor = 0.5
+
+        # Cosine similarity (0.0 if no query vector / no embedding)
+        sim = 0.0
+        if query_vector is not None and trace.embedding is not None:
+            # Approximate: use trust-based score without similarity
+            # (computing cosine in Python is too slow for a hot path)
+            pass
+
+        base = trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor
+
+        # Activation boost from source
+        source_score = score_by_id.get(n["source_trace_id"], 0.0)
+        boost = compute_activation_boost(source_score, max_score, n["strength"], max_strength)
+        combined = base * (1.0 + boost)
+
+        tag_names = [tag.name for tag in trace.tags]
+        results.append(
+            TraceSearchResult(
+                id=trace.id,
+                title=trace.title,
+                context_text=trace.context_text,
+                solution_text=trace.solution_text,
+                trust_score=trace.trust_score,
+                status=trace.status,
+                tags=tag_names,
+                similarity_score=sim,
+                combined_score=combined,
+                contributor_id=trace.contributor_id,
+                created_at=trace.created_at,
+                retrieval_count=trace.retrieval_count,
+                depth_score=trace.depth_score,
+                context_fingerprint=trace.context_fingerprint,
+                convergence_level=trace.convergence_level,
+                memory_temperature=trace.memory_temperature,
+                valid_from=trace.valid_from,
+                valid_until=trace.valid_until,
+            )
+        )
+        existing_ids.add(trace.id)
+
+    # Re-sort by combined score and trim to limit
+    results.sort(key=lambda r: r.combined_score, reverse=True)
+    return results[:limit]
 
 
 @router.post("/traces/search", response_model=TraceSearchResponse)
@@ -109,8 +219,10 @@ async def search_traces(
     if query_vector is not None:
         await db.execute(text("SET LOCAL hnsw.ef_search = 64"))
 
-    # Extract searcher context for relevance boosting
+    # Extract searcher context and expiry preferences
     searcher_fp = body.context
+    include_expired = body.include_expired
+    now_utc = datetime.now(timezone.utc)
 
     # Normalize tags for consistent matching
     normalized_tags = [normalize_tag(t) for t in body.tags]
@@ -131,6 +243,13 @@ async def search_traces(
             .limit(SEARCH_LIMIT_ANN)
         )
 
+        # Exclude expired traces when include_expired=False
+        if not include_expired:
+            from sqlalchemy import or_
+            stmt = stmt.where(
+                or_(Trace.valid_until.is_(None), Trace.valid_until >= now_utc)
+            )
+
         # Step D: Tag pre-filter (if tags provided) — Path 1
         if normalized_tags:
             stmt = (
@@ -146,7 +265,7 @@ async def search_traces(
         result = await db.execute(stmt)
         rows = result.all()  # list of Row(Trace, distance)
 
-        # Trust-weighted re-ranking with depth, temporal decay, context, and convergence
+        # Trust-weighted re-ranking with depth, decay, context, convergence, temperature, validity
         def _rank_score(r):
             sim = 1.0 - r.distance
             trust = math.log1p(max(0.0, r.Trace.trust_score) + 1)
@@ -163,7 +282,11 @@ async def search_traces(
             convergence_boost = 1.0
             if r.Trace.convergence_level is not None:
                 convergence_boost = 1.0 + 0.05 * (4 - r.Trace.convergence_level)
-            return sim * trust * depth * decay * ctx_boost * convergence_boost
+            temp_mult = get_temperature_multiplier(r.Trace.memory_temperature)
+            validity_factor = 1.0
+            if r.Trace.valid_until is not None and r.Trace.valid_until < now_utc:
+                validity_factor = 0.5
+            return sim * trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor
 
         ranked = sorted(rows, key=_rank_score, reverse=True)[:body.limit]
 
@@ -189,6 +312,9 @@ async def search_traces(
                     depth_score=row.Trace.depth_score,
                     context_fingerprint=row.Trace.context_fingerprint,
                     convergence_level=row.Trace.convergence_level,
+                    memory_temperature=row.Trace.memory_temperature,
+                    valid_from=row.Trace.valid_from,
+                    valid_until=row.Trace.valid_until,
                 )
             )
 
@@ -202,6 +328,13 @@ async def search_traces(
             .order_by(Trace.trust_score.desc())
             .limit(100)
         )
+
+        # Exclude expired traces when include_expired=False
+        if not include_expired:
+            from sqlalchemy import or_
+            stmt = stmt.where(
+                or_(Trace.valid_until.is_(None), Trace.valid_until >= now_utc)
+            )
 
         # Step D: Tag pre-filter (if tags provided) — Path 2
         if normalized_tags:
@@ -229,7 +362,11 @@ async def search_traces(
             convergence_boost = 1.0
             if t.convergence_level is not None:
                 convergence_boost = 1.0 + 0.05 * (4 - t.convergence_level)
-            return trust * depth * decay * ctx_boost * convergence_boost
+            temp_mult = get_temperature_multiplier(t.memory_temperature)
+            validity_factor = 1.0
+            if t.valid_until is not None and t.valid_until < now_utc:
+                validity_factor = 0.5
+            return trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor
 
         rows_tag_only = sorted(rows_tag_only, key=_tag_rank_score, reverse=True)[:body.limit]
 
@@ -255,8 +392,17 @@ async def search_traces(
                     depth_score=trace.depth_score,
                     context_fingerprint=trace.context_fingerprint,
                     convergence_level=trace.convergence_level,
+                    memory_temperature=trace.memory_temperature,
+                    valid_from=trace.valid_from,
+                    valid_until=trace.valid_until,
                 )
             )
+
+    # Step G: Spreading activation — graph neighbors of top results get a boost
+    if results:
+        results = await _apply_spreading_activation(
+            db, results, body.limit, searcher_fp, now_utc, query_vector,
+        )
 
     # Fire-and-forget: record retrievals + co-retrieval patterns
     # Tasks are tracked in _background_tasks set to prevent GC before completion
@@ -299,7 +445,7 @@ async def search_traces(
         for r in results:
             r.related_traces = related_by_source.get(str(r.id), [])
 
-    # Step G: Search metrics instrumentation
+    # Step H: Search metrics instrumentation
     search_duration.observe(time.monotonic() - start)
     log.info(
         "search_executed",

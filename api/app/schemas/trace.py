@@ -44,6 +44,9 @@ class TraceResponse(BaseModel):
     is_flagged: bool = False
     context_fingerprint: Optional[dict] = None
     convergence_level: Optional[int] = None
+    memory_temperature: Optional[str] = None
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
     contributor_id: uuid.UUID
     created_at: datetime
     updated_at: datetime

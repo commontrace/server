@@ -9,6 +9,7 @@ class TraceSearchRequest(BaseModel):
     tags: list[str] = Field(default_factory=list, max_length=10, description="Filter by tags (AND semantics — all must match)")
     limit: int = Field(default=10, ge=1, le=50, description="Max results to return")
     context: Optional[dict] = Field(default=None, description="Searcher's environment context for relevance boosting")
+    include_expired: bool = Field(default=True, description="Include expired traces (de-ranked) or exclude entirely")
 
 
 class RelatedTrace(BaseModel):
@@ -34,6 +35,9 @@ class TraceSearchResult(BaseModel):
     depth_score: int = 0
     context_fingerprint: Optional[dict] = None
     convergence_level: Optional[int] = None
+    memory_temperature: Optional[str] = None
+    valid_from: Optional[datetime] = None
+    valid_until: Optional[datetime] = None
     related_traces: list[RelatedTrace] = []
 
 

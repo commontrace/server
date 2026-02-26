@@ -100,6 +100,7 @@ async def submit_trace(
     trace.depth_score = compute_depth_score(enriched, body.solution_text)
     trace.half_life_days = compute_half_life(tag_names)
     trace.context_fingerprint = build_context_fingerprint(enriched, tag_names)
+    trace.memory_temperature = "WARM"  # New traces start warm
 
     # Prospective memory fields
     if body.review_after:
@@ -109,6 +110,14 @@ async def submit_trace(
 
     await db.commit()
     await db.refresh(trace)
+
+    # Set valid_from after refresh (mirrors created_at)
+    if trace.valid_from is None:
+        await db.execute(
+            text("UPDATE traces SET valid_from = created_at WHERE id = :id AND valid_from IS NULL"),
+            {"id": str(trace.id)},
+        )
+        await db.commit()
 
     # Create SUPERSEDES relationship if specified
     if body.supersedes_trace_id:
@@ -120,6 +129,14 @@ async def submit_trace(
                 "ON CONFLICT (source_trace_id, target_trace_id, relationship_type) DO NOTHING"
             ),
             {"new_id": str(trace.id), "old_id": str(body.supersedes_trace_id)},
+        )
+        # Close validity window of superseded trace
+        await db.execute(
+            text(
+                "UPDATE traces SET valid_until = now() "
+                "WHERE id = :old_id AND valid_until IS NULL"
+            ),
+            {"old_id": str(body.supersedes_trace_id)},
         )
         await db.commit()
 
@@ -167,6 +184,9 @@ async def get_trace(
         is_flagged=trace.is_flagged,
         context_fingerprint=trace.context_fingerprint,
         convergence_level=trace.convergence_level,
+        memory_temperature=trace.memory_temperature,
+        valid_from=trace.valid_from,
+        valid_until=trace.valid_until,
         contributor_id=trace.contributor_id,
         created_at=trace.created_at,
         updated_at=trace.updated_at,

@@ -104,6 +104,17 @@ class Trace(Base):
         UUID(as_uuid=True), nullable=True
     )
 
+    # Memory temperature and bi-temporal validity (migration 0009)
+    memory_temperature: Mapped[Optional[str]] = mapped_column(
+        String(10), nullable=True
+    )
+    valid_from: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    valid_until: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False

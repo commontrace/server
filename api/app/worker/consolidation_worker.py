@@ -2,10 +2,10 @@
 
 Runs periodically to maintain knowledge health:
 1. Trust downscaling (prevents unbounded inflation)
-2. Stale trace detection (flags inactive/low-quality traces)
+2. Memory temperature computation (HOT→WARM→COOL→COLD→FROZEN classification)
 3. Co-retrieval relationship building from retrieval logs
 4. Log pruning (removes retrieval logs older than 30 days)
-5. Prospective memory checks (marks traces stale when review_after passes)
+5. Prospective memory checks (marks traces FROZEN when review_after passes)
 6. Convergence detection (clusters similar traces, classifies convergence level)
 
 Pattern extraction (cluster similar traces, generate pattern traces via LLM)
@@ -24,6 +24,7 @@ from app.models.consolidation_run import ConsolidationRun
 from app.models.trace import Trace
 from app.services.convergence import detect_convergence_clusters
 from app.services.maturity import MaturityTier, get_decay_multiplier, get_maturity_tier, should_apply_temporal_decay
+from app.services.temperature import classify_temperature
 
 log = structlog.get_logger()
 
@@ -44,24 +45,47 @@ async def _trust_downscaling(session, decay_factor: float) -> int:
     return result.rowcount
 
 
-async def _stale_trace_detection(session) -> dict:
-    """Flag traces that show no signs of usefulness.
+async def _compute_temperatures(session) -> dict:
+    """Classify memory temperature for all traces and sync backward-compat flags.
 
-    - retrieval_count=0 AND age > stale_age_days → is_stale=True
-    - trust_score < -2 → is_flagged=True
+    Replaces binary stale detection with graduated HOT→WARM→COOL→COLD→FROZEN.
+    Also flags traces with trust_score < -2 (unchanged from previous logic).
     """
-    stale_cutoff = datetime.now(timezone.utc) - timedelta(
-        days=settings.consolidation_stale_age_days
+    result = await session.execute(
+        select(
+            Trace.id,
+            Trace.created_at,
+            Trace.last_retrieved_at,
+            Trace.retrieval_count,
+            Trace.trust_score,
+            Trace.depth_score,
+            Trace.memory_temperature,
+        )
     )
+    rows = result.all()
 
-    stale_result = await session.execute(
-        update(Trace)
-        .where(Trace.retrieval_count == 0)
-        .where(Trace.created_at < stale_cutoff)
-        .where(Trace.is_stale.is_(False))
-        .values(is_stale=True)
-    )
+    temperatures_changed = 0
+    distribution: dict[str, int] = {}
+    for row in rows:
+        new_temp = classify_temperature(
+            row.created_at,
+            row.last_retrieved_at,
+            row.retrieval_count,
+            row.trust_score,
+            row.depth_score,
+        )
+        distribution[new_temp.value] = distribution.get(new_temp.value, 0) + 1
 
+        if row.memory_temperature != new_temp.value:
+            is_stale = new_temp.value == "FROZEN"
+            await session.execute(
+                update(Trace)
+                .where(Trace.id == row.id)
+                .values(memory_temperature=new_temp.value, is_stale=is_stale)
+            )
+            temperatures_changed += 1
+
+    # Flag deeply negative trust traces (unchanged behavior)
     flagged_result = await session.execute(
         update(Trace)
         .where(Trace.trust_score < -2)
@@ -70,7 +94,8 @@ async def _stale_trace_detection(session) -> dict:
     )
 
     return {
-        "newly_stale": stale_result.rowcount,
+        "temperatures_changed": temperatures_changed,
+        "temperature_distribution": distribution,
         "newly_flagged": flagged_result.rowcount,
     }
 
@@ -128,14 +153,14 @@ async def _prune_retrieval_logs(session) -> int:
 
 
 async def _check_prospective_memory(session) -> int:
-    """Mark traces stale when their review_after date has passed."""
+    """Mark traces FROZEN when their review_after date has passed."""
     now = datetime.now(timezone.utc)
     result = await session.execute(
         update(Trace)
         .where(Trace.review_after.is_not(None))
         .where(Trace.review_after < now)
         .where(Trace.is_stale.is_(False))
-        .values(is_stale=True)
+        .values(is_stale=True, memory_temperature="FROZEN")
     )
     return result.rowcount
 
@@ -180,7 +205,7 @@ async def run_consolidation_cycle() -> dict:
         # Each job runs independently — one failure doesn't block others
         jobs: list[tuple[str, object]] = [
             ("trust_downscaled", _trust_downscaling(session, decay_factor)),
-            ("stale_detection", _stale_trace_detection(session)),
+            ("temperature_computation", _compute_temperatures(session)),
             ("co_retrieval_links", _build_co_retrieval_links(session)),
             ("logs_pruned", _prune_retrieval_logs(session)),
             ("prospective_staled", _check_prospective_memory(session)),
