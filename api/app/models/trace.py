@@ -110,6 +110,16 @@ class Trace(Base):
         Float, nullable=False, server_default="0.0"
     )
 
+    # Solution embedding — separate vector for solution text (migration 0013)
+    solution_embedding: Mapped[Optional[list[float]]] = mapped_column(
+        Vector(1536), nullable=True
+    )
+
+    # Categorical impact level — permanent decay floor (migration 0015)
+    impact_level: Mapped[str] = mapped_column(
+        String(10), nullable=False, server_default="normal"
+    )
+
     # Memory temperature and bi-temporal validity (migration 0009)
     memory_temperature: Mapped[Optional[str]] = mapped_column(
         String(10), nullable=True

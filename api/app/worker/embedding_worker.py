@@ -29,7 +29,7 @@ async def process_batch(db: AsyncSession, svc: EmbeddingService) -> int:
     Returns:
         Number of traces processed in this batch.
     """
-    # Fetch traces needing content embedding OR context embedding
+    # Fetch traces needing content embedding, context embedding, or solution embedding
     from sqlalchemy import or_
 
     stmt = (
@@ -38,6 +38,7 @@ async def process_batch(db: AsyncSession, svc: EmbeddingService) -> int:
             or_(
                 Trace.embedding.is_(None),
                 (Trace.context_fingerprint.is_not(None)) & (Trace.context_embedding.is_(None)),
+                Trace.solution_embedding.is_(None),
             )
         )
         .with_for_update(skip_locked=True)
@@ -83,6 +84,15 @@ async def process_batch(db: AsyncSession, svc: EmbeddingService) -> int:
                 embedding_model_version=model_version,
             )
 
+            # Also embed solution text if long enough
+            if trace.solution_embedding is None and len(trace.solution_text) >= 20:
+                try:
+                    sol_vector, _, _ = await svc.embed(trace.solution_text)
+                    values["solution_embedding"] = sol_vector
+                    log.info("solution_embedding_stored", trace_id=str(trace.id))
+                except Exception as exc:
+                    log.error("solution_embedding_error", trace_id=str(trace.id), error=str(exc))
+
             # Also embed context if fingerprint exists
             if trace.context_fingerprint and trace.context_embedding is None:
                 ctx_text = build_context_string(trace.context_fingerprint)
@@ -119,14 +129,50 @@ async def process_batch(db: AsyncSession, svc: EmbeddingService) -> int:
             embeddings_processed.labels(model=model_id, status="success").inc()
             embedding_duration.labels(model=model_id).observe(time.monotonic() - start)
 
+            update_values: dict = {"context_embedding": ctx_vector}
+
+            # Also embed solution if missing and long enough
+            if trace.solution_embedding is None and len(trace.solution_text) >= 20:
+                try:
+                    sol_vector, _, _ = await svc.embed(trace.solution_text)
+                    update_values["solution_embedding"] = sol_vector
+                    log.info("solution_embedding_stored", trace_id=str(trace.id))
+                except Exception as exc:
+                    log.error("solution_embedding_error", trace_id=str(trace.id), error=str(exc))
+
             update_stmt = (
                 update(Trace)
                 .where(Trace.id == trace.id)
-                .values(context_embedding=ctx_vector)
+                .values(**update_values)
                 .execution_options(synchronize_session=False)
             )
             await db.execute(update_stmt)
             log.info("context_embedding_stored", trace_id=str(trace.id))
+            processed += 1
+
+        # Solution embedding only (content + context already embedded)
+        elif trace.solution_embedding is None and len(trace.solution_text) >= 20:
+            start = time.monotonic()
+            try:
+                sol_vector, model_id, _ = await svc.embed(trace.solution_text)
+            except EmbeddingSkippedError:
+                embeddings_processed.labels(model="none", status="skipped").inc()
+                return 0
+            except Exception as exc:
+                log.error("solution_embedding_error", trace_id=str(trace.id), error=str(exc))
+                continue
+
+            embeddings_processed.labels(model=model_id, status="success").inc()
+            embedding_duration.labels(model=model_id).observe(time.monotonic() - start)
+
+            update_stmt = (
+                update(Trace)
+                .where(Trace.id == trace.id)
+                .values(solution_embedding=sol_vector)
+                .execution_options(synchronize_session=False)
+            )
+            await db.execute(update_stmt)
+            log.info("solution_embedding_stored", trace_id=str(trace.id))
             processed += 1
 
     await db.commit()

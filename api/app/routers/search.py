@@ -41,6 +41,7 @@ from app.services.decay import temporal_decay_factor
 from app.services.embedding import EmbeddingService, EmbeddingSkippedError
 from app.services.retrieval import record_co_retrievals, record_retrieval_logs, record_retrievals
 from app.services.tags import normalize_tag
+from app.services.diversity import apply_diversity_sampling
 from app.services.temperature import get_temperature_multiplier
 
 # Track background tasks to prevent GC before completion
@@ -72,6 +73,10 @@ router = APIRouter(prefix="/api/v1", tags=["search"])
 
 # Over-fetch from ANN before re-ranking to ensure we have enough candidates
 SEARCH_LIMIT_ANN = 100
+
+# Impact level multipliers and permanent decay floors (Principle 12 — Emotional Salience)
+IMPACT_MULT = {"critical": 1.2, "high": 1.1, "normal": 1.0, "low": 0.95}
+IMPACT_FLOOR = {"critical": 0.7, "high": 0.5, "normal": 0.3, "low": 0.3}
 
 
 async def _apply_spreading_activation(
@@ -120,6 +125,10 @@ async def _apply_spreading_activation(
         decay = temporal_decay_factor(
             trace.created_at, trace.last_retrieved_at, trace.half_life_days,
         )
+        # Impact level: permanent decay floor + multiplier
+        il = getattr(trace, 'impact_level', 'normal') or 'normal'
+        decay = max(IMPACT_FLOOR.get(il, 0.3), decay)
+        impact_mult = IMPACT_MULT.get(il, 1.0)
         ctx_boost = 1.0
         if searcher_fp and trace.context_fingerprint:
             alignment = compute_context_alignment(searcher_fp, trace.context_fingerprint)
@@ -140,7 +149,7 @@ async def _apply_spreading_activation(
             pass
 
         somatic_mult = 1.0 + 0.3 * trace.somatic_intensity
-        base = trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor * somatic_mult
+        base = trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor * somatic_mult * impact_mult
 
         # Activation boost from source
         source_score = score_by_id.get(n["source_trace_id"], 0.0)
@@ -164,6 +173,8 @@ async def _apply_spreading_activation(
                 retrieval_count=trace.retrieval_count,
                 depth_score=trace.depth_score,
                 somatic_intensity=trace.somatic_intensity,
+                impact_level=getattr(trace, 'impact_level', 'normal') or 'normal',
+                trace_type=trace.trace_type,
                 context_fingerprint=trace.context_fingerprint,
                 convergence_level=trace.convergence_level,
                 memory_temperature=trace.memory_temperature,
@@ -230,6 +241,7 @@ async def search_traces(
     normalized_tags = [normalize_tag(t) for t in body.tags]
 
     results: list[TraceSearchResult] = []
+    _trace_embeddings: dict[uuid_mod.UUID, list[float]] = {}
 
     if query_vector is not None:
         # Step C Path 1: Semantic search (q is provided, query_vector exists)
@@ -267,7 +279,7 @@ async def search_traces(
         result = await db.execute(stmt)
         rows = result.all()  # list of Row(Trace, distance)
 
-        # Trust-weighted re-ranking with depth, decay, context, convergence, temperature, validity
+        # Trust-weighted re-ranking with depth, decay, context, convergence, temperature, validity, impact
         def _rank_score(r):
             sim = 1.0 - r.distance
             trust = math.log1p(max(0.0, r.Trace.trust_score) + 1)
@@ -277,6 +289,9 @@ async def search_traces(
                 r.Trace.last_retrieved_at,
                 r.Trace.half_life_days,
             )
+            il = getattr(r.Trace, 'impact_level', 'normal') or 'normal'
+            decay = max(IMPACT_FLOOR.get(il, 0.3), decay)
+            impact_mult = IMPACT_MULT.get(il, 1.0)
             ctx_boost = 1.0
             if searcher_fp and r.Trace.context_fingerprint:
                 alignment = compute_context_alignment(searcher_fp, r.Trace.context_fingerprint)
@@ -289,7 +304,7 @@ async def search_traces(
             if r.Trace.valid_until is not None and r.Trace.valid_until < now_utc:
                 validity_factor = 0.5
             somatic_mult = 1.0 + 0.3 * r.Trace.somatic_intensity
-            return sim * trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor * somatic_mult
+            return sim * trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor * somatic_mult * impact_mult
 
         ranked = sorted(rows, key=_rank_score, reverse=True)[:body.limit]
 
@@ -298,6 +313,8 @@ async def search_traces(
             similarity = 1.0 - row.distance
             combined = _rank_score(row)
             tag_names = [tag.name for tag in row.Trace.tags]
+            if row.Trace.embedding is not None:
+                _trace_embeddings[row.Trace.id] = row.Trace.embedding
             results.append(
                 TraceSearchResult(
                     id=row.Trace.id,
@@ -314,6 +331,8 @@ async def search_traces(
                     retrieval_count=row.Trace.retrieval_count,
                     depth_score=row.Trace.depth_score,
                     somatic_intensity=row.Trace.somatic_intensity,
+                    impact_level=getattr(row.Trace, 'impact_level', 'normal') or 'normal',
+                    trace_type=row.Trace.trace_type,
                     context_fingerprint=row.Trace.context_fingerprint,
                     convergence_level=row.Trace.convergence_level,
                     memory_temperature=row.Trace.memory_temperature,
@@ -359,6 +378,9 @@ async def search_traces(
             trust = math.log1p(max(0.0, t.trust_score) + 1)
             depth = 1 + 0.1 * t.depth_score
             decay = temporal_decay_factor(t.created_at, t.last_retrieved_at, t.half_life_days)
+            il = getattr(t, 'impact_level', 'normal') or 'normal'
+            decay = max(IMPACT_FLOOR.get(il, 0.3), decay)
+            impact_mult = IMPACT_MULT.get(il, 1.0)
             ctx_boost = 1.0
             if searcher_fp and t.context_fingerprint:
                 alignment = compute_context_alignment(searcher_fp, t.context_fingerprint)
@@ -371,7 +393,7 @@ async def search_traces(
             if t.valid_until is not None and t.valid_until < now_utc:
                 validity_factor = 0.5
             somatic_mult = 1.0 + 0.3 * t.somatic_intensity
-            return trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor * somatic_mult
+            return trust * depth * decay * ctx_boost * convergence_boost * temp_mult * validity_factor * somatic_mult * impact_mult
 
         rows_tag_only = sorted(rows_tag_only, key=_tag_rank_score, reverse=True)[:body.limit]
 
@@ -380,6 +402,8 @@ async def search_traces(
             similarity = 0.0  # No semantic similarity in tag-only mode
             combined = _tag_rank_score(trace)
             tag_names = [tag.name for tag in trace.tags]
+            if trace.embedding is not None:
+                _trace_embeddings[trace.id] = trace.embedding
             results.append(
                 TraceSearchResult(
                     id=trace.id,
@@ -396,6 +420,8 @@ async def search_traces(
                     retrieval_count=trace.retrieval_count,
                     depth_score=trace.depth_score,
                     somatic_intensity=trace.somatic_intensity,
+                    impact_level=getattr(trace, 'impact_level', 'normal') or 'normal',
+                    trace_type=trace.trace_type,
                     context_fingerprint=trace.context_fingerprint,
                     convergence_level=trace.convergence_level,
                     memory_temperature=trace.memory_temperature,
@@ -409,6 +435,10 @@ async def search_traces(
         results = await _apply_spreading_activation(
             db, results, body.limit, searcher_fp, now_utc, query_vector,
         )
+
+    # Step G.5: Diversity sampling — ensure results don't all converge on same approach
+    if len(results) >= 3 and _trace_embeddings:
+        results = apply_diversity_sampling(results, _trace_embeddings)
 
     # Fire-and-forget: record retrievals + co-retrieval patterns
     # Tasks are tracked in _background_tasks set to prevent GC before completion

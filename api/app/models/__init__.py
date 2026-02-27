@@ -9,6 +9,8 @@ from .trace_relationship import TraceRelationship, RelationshipType
 from .retrieval_log import RetrievalLog
 from .consolidation_run import ConsolidationRun
 from .trigger_stats import TriggerStats
+from .tag_trend import TagTrend
+from .rif_shadow import RifShadow
 
 __all__ = [
     "Base",
@@ -26,4 +28,6 @@ __all__ = [
     "RetrievalLog",
     "ConsolidationRun",
     "TriggerStats",
+    "TagTrend",
+    "RifShadow",
 ]

@@ -38,6 +38,7 @@ class TraceResponse(BaseModel):
     tags: list[str] = Field(default_factory=list)
     depth_score: int = 0
     somatic_intensity: float = 0.0
+    impact_level: str = "normal"
     retrieval_count: int = 0
     half_life_days: Optional[int] = None
     trace_type: str = "episodic"

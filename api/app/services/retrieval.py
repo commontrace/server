@@ -66,13 +66,17 @@ async def record_retrieval_logs(
     try:
         async with async_session_factory() as session:
             values = [
-                {"trace_id": str(tid), "search_session_id": search_session_id}
-                for tid in trace_ids
+                {
+                    "trace_id": str(tid),
+                    "search_session_id": search_session_id,
+                    "result_position": idx,
+                }
+                for idx, tid in enumerate(trace_ids)
             ]
             await session.execute(
                 text(
-                    "INSERT INTO retrieval_logs (id, trace_id, search_session_id) "
-                    "VALUES (gen_random_uuid(), :trace_id, :search_session_id)"
+                    "INSERT INTO retrieval_logs (id, trace_id, search_session_id, result_position) "
+                    "VALUES (gen_random_uuid(), :trace_id, :search_session_id, :result_position)"
                 ),
                 values,
             )

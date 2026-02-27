@@ -49,7 +49,7 @@ async def fetch_activation_neighbors(
             "FROM trace_relationships tr "
             "JOIN traces t ON t.id = tr.target_trace_id "
             "WHERE tr.source_trace_id = ANY(:source_ids) "
-            "AND tr.relationship_type IN ('CO_RETRIEVED', 'SUPERSEDES') "
+            "AND tr.relationship_type IN ('CO_RETRIEVED', 'SUPERSEDES', 'ALTERNATIVE_TO') "
             "AND t.is_flagged = false "
             "ORDER BY tr.strength DESC "
             "LIMIT :max_neighbors"

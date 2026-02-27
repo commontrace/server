@@ -134,6 +134,7 @@ def compute_somatic_intensity(metadata: Optional[dict]) -> float:
     - error_count: int — errors encountered during resolution
     - time_to_resolution_minutes: float — time invested
     - iteration_count: int — edit iterations on the same files
+    - user_emphasis: float (0.0-1.0) — structural emphasis from user prompts
     """
     meta = metadata or {}
     pattern = meta.get("detection_pattern", "")
@@ -148,6 +149,7 @@ def compute_somatic_intensity(metadata: Optional[dict]) -> float:
         "test_fix_cycle": 0.4,
         "migration_pattern": 0.5,
         "user_correction": 0.5,
+        "user_emphasis": 0.4,
         "infra_discovery": 0.4,
         "research_then_implement": 0.3,
         "config_discovery": 0.3,
@@ -168,7 +170,55 @@ def compute_somatic_intensity(metadata: Optional[dict]) -> float:
     if isinstance(iterations, (int, float)):
         intensity += min(0.1, iterations * 0.01)
 
+    # User emphasis: when the user stresses importance, boost intensity
+    # Like emotional memory — emphasized knowledge is remembered more vividly
+    emphasis = meta.get("user_emphasis", 0)
+    if isinstance(emphasis, (int, float)) and emphasis > 0:
+        intensity += min(0.15, emphasis * 0.15)
+
     return min(1.0, intensity)
+
+
+_CRITICAL_TAGS = {"security", "authentication", "authorization", "encryption", "vulnerability", "cve"}
+_HIGH_TAGS = {"error", "crash", "bug", "fix", "regression", "migration", "deployment", "production"}
+_LOW_TAGS = {"style", "formatting", "lint", "refactor", "cleanup", "typo"}
+_CRITICAL_PATTERNS = {"security_hardening"}
+_HIGH_PATTERNS = {"error_resolution", "prediction_error", "approach_reversal"}
+
+
+def compute_impact_level(metadata: Optional[dict], tags: list[str]) -> str:
+    """Compute categorical impact level from metadata and tags.
+
+    Returns one of: critical, high, normal, low.
+
+    Critical traces get a permanent decay floor of 70% — they never fully
+    fade from search results. High gets 50%, normal/low get 30%.
+    """
+    meta = metadata or {}
+    tag_set = {t.lower() for t in tags}
+    pattern = meta.get("detection_pattern", "")
+
+    # Critical: security-related
+    if tag_set & _CRITICAL_TAGS or pattern in _CRITICAL_PATTERNS:
+        return "critical"
+
+    # High: error/bug-related, high effort, or high-signal patterns
+    if tag_set & _HIGH_TAGS or pattern in _HIGH_PATTERNS:
+        return "high"
+
+    error_count = meta.get("error_count", 0)
+    if isinstance(error_count, (int, float)) and error_count > 5:
+        return "high"
+
+    time_min = meta.get("time_to_resolution_minutes", 0)
+    if isinstance(time_min, (int, float)) and time_min > 60:
+        return "high"
+
+    # Low: cosmetic/style changes
+    if tag_set & _LOW_TAGS and not (tag_set & _HIGH_TAGS) and not (tag_set & _CRITICAL_TAGS):
+        return "low"
+
+    return "normal"
 
 
 def auto_enrich_metadata(metadata: Optional[dict], solution_text: str) -> dict:

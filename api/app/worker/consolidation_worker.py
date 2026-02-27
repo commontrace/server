@@ -7,9 +7,10 @@ Runs periodically to maintain knowledge health:
 4. Log pruning (removes retrieval logs older than 30 days)
 5. Prospective memory checks (marks traces FROZEN when review_after passes)
 6. Convergence detection (clusters similar traces, classifies convergence level)
-
-Pattern extraction (cluster similar traces, generate pattern traces via LLM)
-is deferred until the knowledge base reaches sufficient scale.
+7. RIF shadow detection (retrieval-induced forgetting patterns)
+8. Tag trend detection (stigmergic emerging signals)
+9. Alternative/contradiction detection (within convergence clusters)
+10. Pattern trace generation (structural synthesis from convergence clusters)
 """
 
 import asyncio
@@ -23,9 +24,13 @@ from app.database import async_session_factory
 from app.models.consolidation_run import ConsolidationRun
 from app.models.trace import Trace
 
+from app.services.contradiction import detect_alternatives
 from app.services.convergence import detect_convergence_clusters
 from app.services.maturity import MaturityTier, get_decay_multiplier, get_maturity_tier, should_apply_temporal_decay
+from app.services.pattern_synthesis import generate_pattern_traces
+from app.services.rif import detect_rif_shadows
 from app.services.temperature import classify_temperature
+from app.services.trends import detect_tag_trends
 
 log = structlog.get_logger()
 
@@ -210,11 +215,15 @@ async def run_consolidation_cycle() -> dict:
             ("co_retrieval_links", _build_co_retrieval_links(session)),
             ("logs_pruned", _prune_retrieval_logs(session)),
             ("prospective_staled", _check_prospective_memory(session)),
+            ("rif_shadows_detected", detect_rif_shadows(session)),
+            ("tag_trends_detected", detect_tag_trends(session)),
         ]
 
-        # Convergence detection only in GROWING/MATURE
+        # Convergence detection + cluster analysis only in GROWING/MATURE
         if tier in (MaturityTier.GROWING, MaturityTier.MATURE):
             jobs.append(("convergence_detected", _detect_convergence(session)))
+            jobs.append(("alternatives_detected", detect_alternatives(session)))
+            jobs.append(("patterns_generated", generate_pattern_traces(session)))
 
         for job_name, coro in jobs:
             try:

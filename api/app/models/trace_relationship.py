@@ -20,6 +20,8 @@ class RelationshipType(str, enum.Enum):
     SUPERSEDES = "SUPERSEDES"
     COMPLEMENTS = "COMPLEMENTS"
     PATTERN_SOURCE = "PATTERN_SOURCE"
+    CONTRADICTS = "CONTRADICTS"
+    ALTERNATIVE_TO = "ALTERNATIVE_TO"
 
 
 class TraceRelationship(Base):

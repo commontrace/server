@@ -34,6 +34,8 @@ class TraceSearchResult(BaseModel):
     retrieval_count: int = 0
     depth_score: int = 0
     somatic_intensity: float = 0.0
+    impact_level: str = "normal"
+    trace_type: str = "episodic"
     context_fingerprint: Optional[dict] = None
     convergence_level: Optional[int] = None
     memory_temperature: Optional[str] = None
