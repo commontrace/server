@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "created": "2026-02-27",
+  "project": "CommonTrace",
+  "concepts": [
+    {"path": "infrastructure/README.md", "keywords": ["deploy", "railway", "postgres", "redis", "docker", "scaling"]},
+    {"path": "skill/README.md", "keywords": ["hook", "skill", "trigger", "detection", "local_store", "sqlite", "contribution"]},
+    {"path": "api/README.md", "keywords": ["api", "endpoint", "search", "ranking", "embedding", "model", "trace", "migration"]},
+    {"path": "frontend/README.md", "keywords": ["frontend", "design", "css", "html", "i18n", "template", "jinja"]},
+    {"path": "mcp/README.md", "keywords": ["mcp", "proxy", "transport", "fastmcp", "tool"]}
+  ],
+  "split_threshold_lines": 500
+}

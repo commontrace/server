@@ -89,6 +89,10 @@ SQLite at `~/.commontrace/local.db` — survives across sessions:
 - `events` — migrated JSONL events for cross-session analysis
 - `error_signatures` — fuzzy error signatures for recurrence detection
 - `trigger_feedback` — which triggers led to trace consumption (reinforcement)
+- `local_knowledge` — contributed traces with temperature, decay, half-life, evergreen, bi-temporal
+- `discovered_knowledge` — cached traces from others (search results, get_trace responses)
+- `session_insights` — top pattern + score per session for recall
+- `error_resolutions` — error signature → fix files + command pairing
 
 ## Development Workflow
 
@@ -98,3 +102,30 @@ SQLite at `~/.commontrace/local.db` — survives across sessions:
 - Frontend deploys via `git push` to commontrace/frontend → Railway auto-deploy
 
 Always syntax-check before committing: `python3 -c "import py_compile; py_compile.compile('file.py', doraise=True)"`
+
+## Persistent Memory System
+
+Project knowledge is organized in `memory/` as concept files. This survives across sessions and context compactions.
+
+### Structure
+
+```
+memory/
+  INDEX.md              ← routing table (keyword → concept file). Read FIRST.
+  _manifest.json        ← metadata, split threshold
+  infrastructure/       ← deployment, services, database, costs
+  api/                  ← endpoints, models, ranking, embeddings
+  skill/                ← hooks, detection, local store, triggers
+  frontend/             ← design, i18n, build pipeline
+  mcp/                  ← proxy, tools, circuit breaker
+  sessions/             ← session journal (short-term notes)
+```
+
+### Work Mode
+
+1. **After context compaction**: Read `memory/INDEX.md`. Load only the concept files relevant to the current task (use keywords in the routing table).
+2. **After completing a task**: Update the relevant concept file with new discoveries. If a concept file exceeds 500 lines, split it into a subdirectory with sub-files and update `INDEX.md`.
+3. **Pre-compaction flush**: During long sessions (10+ tool calls on a topic), proactively write key findings to `memory/sessions/` before context grows large. Don't wait for task completion — compaction is lossy and unpredictable. Flush early, flush often.
+4. **Session notes**: Put work-in-progress notes in `memory/sessions/`. Consolidate stable patterns into concept files after they're confirmed across multiple interactions.
+5. **Never duplicate**: Check existing concept files before writing. Update in place rather than creating parallel entries.
+6. **Manifest**: Keep `_manifest.json` in sync when adding new concept files or keywords.
