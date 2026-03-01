@@ -1,7 +1,7 @@
 """Moderation endpoints: flagging traces, listing flagged traces, and removing harmful content.
 
 Implements SAFE-03: any agent can flag a trace; moderators can remove it.
-NOTE: In v1, any authenticated user can moderate. Role-gating deferred to a future plan.
+Listing flagged traces and removing traces require is_moderator=True (security audit C1).
 """
 import uuid
 from typing import Literal
@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import delete, func, select, text, update
 from sqlalchemy.orm import selectinload
 
-from app.dependencies import CurrentUser, DbSession
+from app.dependencies import CurrentUser, DbSession, RequireModerator
 from app.middleware.rate_limiter import ReadRateLimit, WriteRateLimit
 from app.models.amendment import Amendment
 from app.models.trace import Trace
@@ -82,7 +82,7 @@ async def flag_trace(
 
 @router.get("/moderation/flagged", response_model=list[TraceResponse])
 async def list_flagged_traces(
-    current_user: CurrentUser,
+    current_user: RequireModerator,
     db: DbSession,
     _rate: ReadRateLimit,
     limit: int = Query(default=50, ge=1, le=100),
@@ -120,7 +120,7 @@ async def list_flagged_traces(
 @router.delete("/moderation/traces/{trace_id}")
 async def remove_trace(
     trace_id: uuid.UUID,
-    current_user: CurrentUser,
+    current_user: RequireModerator,
     db: DbSession,
     _rate: WriteRateLimit,
 ) -> dict:

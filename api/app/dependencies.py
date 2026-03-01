@@ -62,3 +62,20 @@ async def require_email(user: User = Depends(get_current_user)) -> User:
 
 
 RequireEmail = Annotated[User, Depends(require_email)]
+
+
+async def require_moderator(user: User = Depends(get_current_user)) -> User:
+    """Gate: requires authenticated user to have moderator privileges.
+
+    Raises 403 if user.is_moderator is False.
+    Applied to moderation endpoints (listing flagged, removing traces).
+    """
+    if not user.is_moderator:
+        raise HTTPException(
+            status_code=403,
+            detail="Moderator privileges required",
+        )
+    return user
+
+
+RequireModerator = Annotated[User, Depends(require_moderator)]

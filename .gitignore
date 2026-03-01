@@ -40,3 +40,6 @@ frontend/seed_traces.json
 
 # Playwright
 .playwright-mcp/
+
+# Planning / audit docs (local only)
+.planning/

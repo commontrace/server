@@ -24,6 +24,7 @@ class User(Base):
     display_name: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     reputation_score: Mapped[float] = mapped_column(Float, default=0.0, nullable=False)
     is_seed: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    is_moderator: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False, server_default="false")
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
