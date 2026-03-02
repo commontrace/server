@@ -3,9 +3,9 @@
 ## Current Position
 
 Phase: 6 (Local Store Redesign)
-Plan: 1 of 2 complete
-Status: In progress
-Last activity: 2026-03-02 — 06-01 complete: 5-table local_store.py rewrite with WAL mode and migration gate
+Plan: 2 of 2 complete
+Status: Phase complete
+Last activity: 2026-03-02 — 06-02 complete: all 4 hook callers updated to use new 5-table local_store v2 API
 
 ## Project Reference
 
@@ -22,7 +22,7 @@ See: .planning/PROJECT.md (updated 2026-02-27)
 - Local store rewritten: 10 tables → 5 tables (working memory pattern), DONE (06-01)
 - Detection patterns (16) to shift from gates to context enrichment
 - Contribution flow: agent assesses relevance, not importance score threshold
-- Hook callers (session_start, stop, post_tool_use, user_prompt) still need updating (06-02)
+- Hook callers updated (06-02): session_start, stop, post_tool_use, user_prompt all use new API
 
 ## Decisions
 
@@ -30,3 +30,6 @@ See: .planning/PROJECT.md (updated 2026-02-27)
 - 06-01: commit() must precede PRAGMA wal_checkpoint(PASSIVE) — checkpoint fails inside active transaction
 - 06-01: Table-rebuild (BEGIN EXCLUSIVE) for column renames/drops — not ALTER TABLE RENAME COLUMN
 - 06-01: trace_cache created by executescript(_SCHEMA) after _apply_migrations(), not inside migration function
+- 06-02: domain_entry fires when file language != project primary language (not entities-based multi-language check)
+- 06-02: handle_research removes all local BM25 pre-search (API handles recall)
+- 06-02: _check_error_recurrence simplified to record-only (no local resolution lookup)
