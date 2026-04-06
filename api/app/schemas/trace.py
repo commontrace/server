@@ -1,19 +1,19 @@
 """Pydantic schemas for trace submission and response."""
 
+import json
 import uuid
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class TraceCreate(BaseModel):
     """Request schema for submitting a new trace."""
 
-    title: str = Field(min_length=1, max_length=500)
-    context_text: str = Field(min_length=1)
-    solution_text: str = Field(min_length=1)
-    # max_length on list applies to the list length (number of elements), capped at 20 tags
+    title: str = Field(min_length=1, max_length=200)
+    context_text: str = Field(min_length=1, max_length=50_000)
+    solution_text: str = Field(min_length=1, max_length=50_000)
     tags: list[str] = Field(default_factory=list, max_length=20)
     agent_model: Optional[str] = Field(None, max_length=100)
     agent_version: Optional[str] = Field(None, max_length=50)
@@ -21,6 +21,14 @@ class TraceCreate(BaseModel):
     supersedes_trace_id: Optional[uuid.UUID] = None
     review_after: Optional[datetime] = None
     watch_condition: Optional[str] = Field(None, max_length=500)
+
+    @model_validator(mode="after")
+    def validate_metadata_size(self):
+        """M2: Reject metadata_json larger than 10 KB serialized."""
+        if self.metadata_json is not None:
+            if len(json.dumps(self.metadata_json)) > 10_000:
+                raise ValueError("metadata_json exceeds 10 KB limit")
+        return self
 
 
 class TraceResponse(BaseModel):

@@ -4,6 +4,7 @@ from fastapi import APIRouter
 from pydantic import BaseModel
 
 from app.dependencies import CurrentUser, DbSession
+from app.middleware.rate_limiter import WriteRateLimit
 from app.models.trigger_stats import TriggerStats
 
 router = APIRouter(prefix="/api/v1/telemetry", tags=["telemetry"])
@@ -23,6 +24,7 @@ async def report_trigger_stats(
     body: TriggerStatsBody,
     user: CurrentUser,
     db: DbSession,
+    _rate: WriteRateLimit,
 ) -> TriggerStatsResponse:
     """Accept anonymized trigger effectiveness stats from a skill client.
 

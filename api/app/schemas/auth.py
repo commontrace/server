@@ -3,13 +3,13 @@
 import uuid
 from typing import Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 
 
 class APIKeyCreate(BaseModel):
     """Request schema for creating a new API key / user registration."""
 
-    email: Optional[str] = Field(None, max_length=255)
+    email: Optional[EmailStr] = None
     display_name: Optional[str] = Field(None, max_length=100)
 
 

@@ -123,6 +123,16 @@ async def submit_trace(
 
     # Create SUPERSEDES relationship if specified
     if body.supersedes_trace_id:
+        # H5: Verify ownership — only the original contributor can supersede a trace
+        target_result = await db.execute(
+            select(Trace.contributor_id).where(Trace.id == body.supersedes_trace_id)
+        )
+        target_owner = target_result.scalar_one_or_none()
+        if target_owner is None:
+            raise HTTPException(status_code=404, detail="Superseded trace not found")
+        if target_owner != user.id:
+            raise HTTPException(status_code=403, detail="Can only supersede your own traces")
+
         await db.execute(
             text(
                 "INSERT INTO trace_relationships "

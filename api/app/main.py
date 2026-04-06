@@ -4,11 +4,14 @@ from contextlib import asynccontextmanager
 import redis.asyncio as aioredis
 import structlog
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
 
 from app.config import settings
 from app.logging_config import configure_logging
 from app.metrics import metrics_endpoint
 from app.middleware.logging_middleware import RequestLoggingMiddleware
+from app.middleware.body_limit import BodySizeLimitMiddleware
 from app.routers import amendments, auth, moderation, reputation, search, tags, telemetry, traces, votes
 from app.worker.consolidation_worker import consolidation_worker_loop
 from app.worker.embedding_worker import process_batch
@@ -57,7 +60,28 @@ async def lifespan(app: FastAPI):
         await app.state.redis.aclose()
 
 
-app = FastAPI(title="CommonTrace API", version="0.1.0", lifespan=lifespan)
+# H1: Disable docs/openapi in production (only available when debug=True)
+_docs_kwargs = {}
+if not settings.debug:
+    _docs_kwargs = {"docs_url": None, "redoc_url": None, "openapi_url": None}
+
+app = FastAPI(title="CommonTrace API", version="0.1.0", lifespan=lifespan, **_docs_kwargs)
+
+# H3: CORS — explicit origin whitelist
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://commontrace.org",
+        "https://www.commontrace.org",
+        "https://docs.commontrace.org",
+    ],
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["X-API-Key", "Content-Type"],
+    allow_credentials=False,
+)
+
+# M7: Reject request bodies larger than 1 MB
+app.add_middleware(BodySizeLimitMiddleware, max_body_size=1_048_576)
 
 # Register request logging middleware (runs on every request)
 app.add_middleware(RequestLoggingMiddleware)
@@ -83,8 +107,9 @@ app.include_router(tags.router)
 # Telemetry router
 app.include_router(telemetry.router)
 
-# Prometheus metrics endpoint
-app.get("/metrics")(metrics_endpoint)
+# H2: Gate /metrics behind auth (only available when debug=True)
+if settings.debug:
+    app.get("/metrics")(metrics_endpoint)
 
 
 @app.get("/health")
