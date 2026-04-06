@@ -1,6 +1,6 @@
 """Add impact_level column to traces
 
-Revision ID: d4e5f6a1b2c3
+Revision ID: 150d4e5f6a1b
 Revises: c3d4e5f6a1b2
 Create Date: 2026-02-26 23:03:00.000000
 
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "d4e5f6a1b2c3"
-down_revision: str = "c3d4e5f6a1b2"
+revision: str = "150d4e5f6a1b"
+down_revision: str = "140c3d4e5f6a"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

@@ -1,6 +1,6 @@
 """Add tag_trends table for stigmergic signal detection
 
-Revision ID: e5f6a1b2c3d4
+Revision ID: 160e5f6a1b2c
 Revises: d4e5f6a1b2c3
 Create Date: 2026-02-26 23:04:00.000000
 
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "e5f6a1b2c3d4"
-down_revision: str = "d4e5f6a1b2c3"
+revision: str = "160e5f6a1b2c"
+down_revision: str = "150d4e5f6a1b"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

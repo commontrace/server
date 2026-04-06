@@ -1,6 +1,6 @@
 """Add solution_embedding column to traces
 
-Revision ID: b2c3d4e5f6a1
+Revision ID: 130b2c3d4e5f
 Revises: a1b2c3d4e5f6
 Create Date: 2026-02-26 23:01:00.000000
 
@@ -16,8 +16,8 @@ from pgvector.sqlalchemy import Vector
 
 from alembic import op
 
-revision: str = "b2c3d4e5f6a1"
-down_revision: str = "a1b2c3d4e5f6"
+revision: str = "130b2c3d4e5f"
+down_revision: str = "120a1b2c3d4e"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

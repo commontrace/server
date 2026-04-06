@@ -1,6 +1,6 @@
 """Add is_moderator flag to users table
 
-Revision ID: f6a1b2c3d4e5
+Revision ID: 170f6a1b2c3d
 Revises: e5f6a1b2c3d4
 Create Date: 2026-03-01 22:00:00.000000
 
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "f6a1b2c3d4e5"
-down_revision: str = "e5f6a1b2c3d4"
+revision: str = "170f6a1b2c3d"
+down_revision: str = "160e5f6a1b2c"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

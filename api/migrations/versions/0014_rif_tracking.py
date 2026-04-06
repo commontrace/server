@@ -1,6 +1,6 @@
 """Add retrieval-induced forgetting tracking
 
-Revision ID: c3d4e5f6a1b2
+Revision ID: 140c3d4e5f6a
 Revises: b2c3d4e5f6a1
 Create Date: 2026-02-26 23:02:00.000000
 
@@ -15,8 +15,8 @@ import sqlalchemy as sa
 
 from alembic import op
 
-revision: str = "c3d4e5f6a1b2"
-down_revision: str = "b2c3d4e5f6a1"
+revision: str = "140c3d4e5f6a"
+down_revision: str = "130b2c3d4e5f"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
