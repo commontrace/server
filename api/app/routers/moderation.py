@@ -51,19 +51,32 @@ async def flag_trace(
     if trace is None:
         raise HTTPException(status_code=404, detail="Trace not found")
 
-    if trace.is_flagged:
+    # M8: Prevent same user from flagging same trace twice.
+    # Use metadata_json to track flagging users (lightweight, no migration needed).
+    flag_meta = trace.metadata_json or {}
+    flagged_by = flag_meta.get("_flagged_by", [])
+    user_id_str = str(current_user.id)
+
+    if user_id_str in flagged_by:
         return {
             "trace_id": str(trace_id),
-            "flagged": True,
+            "flagged": trace.is_flagged,
             "category": body.category,
-            "message": "Trace already flagged",
+            "message": "You have already flagged this trace",
         }
+
+    flagged_by.append(user_id_str)
+    flag_meta["_flagged_by"] = flagged_by
 
     # Mark as flagged using an atomic UPDATE (avoids stale ORM state)
     await db.execute(
         update(Trace)
         .where(Trace.id == trace_id)
-        .values(is_flagged=True, flagged_at=func.now())
+        .values(
+            is_flagged=True,
+            flagged_at=func.now(),
+            metadata_json=flag_meta,
+        )
         .execution_options(synchronize_session=False)
     )
     await db.commit()

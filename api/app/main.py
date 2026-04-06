@@ -33,8 +33,11 @@ async def _embedding_worker_loop():
                 count = await process_batch(db, svc)
                 if count > 0:
                     log.info("embedding_batch_processed", count=count)
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
-            log.error("embedding_worker_error", error=str(exc))
+            # L3: Log full traceback instead of silently swallowing
+            log.exception("embedding_worker_error", error=str(exc))
         await asyncio.sleep(WORKER_POLL_INTERVAL)
 
 
@@ -65,7 +68,7 @@ _docs_kwargs = {}
 if not settings.debug:
     _docs_kwargs = {"docs_url": None, "redoc_url": None, "openapi_url": None}
 
-app = FastAPI(title="CommonTrace API", version="0.1.0", lifespan=lifespan, **_docs_kwargs)
+app = FastAPI(title="CommonTrace API", version="1.0.0", lifespan=lifespan, **_docs_kwargs)
 
 # H3: CORS — explicit origin whitelist
 app.add_middleware(

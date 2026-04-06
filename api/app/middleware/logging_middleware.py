@@ -34,9 +34,12 @@ class RequestLoggingMiddleware(BaseHTTPMiddleware):
         duration = time.monotonic() - start
         status_code = response.status_code
 
-        # Prometheus metrics
-        # Normalize path to avoid high-cardinality labels (strip UUIDs)
-        normalized_path = request.url.path
+        # L1: Normalize path to avoid high-cardinality Prometheus labels
+        import re
+        normalized_path = re.sub(
+            r'[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}',
+            '{id}', request.url.path
+        )
         http_requests.labels(method=request.method, path=normalized_path, status_code=str(status_code)).inc()
         http_request_duration.labels(method=request.method, path=normalized_path).observe(duration)
 

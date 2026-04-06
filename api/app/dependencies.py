@@ -1,4 +1,5 @@
 import hashlib
+import hmac
 from typing import Annotated
 
 import redis.asyncio as aioredis
@@ -10,6 +11,21 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_db
 from app.models.user import User
+
+
+def hash_api_key(raw_key: str) -> str:
+    """M3: Hash API key with optional HMAC pepper.
+
+    If API_KEY_PEPPER is set, uses HMAC-SHA256 (peppered).
+    Falls back to plain SHA-256 for backward compatibility.
+    """
+    if settings.api_key_pepper:
+        return hmac.new(
+            settings.api_key_pepper.encode(),
+            raw_key.encode(),
+            hashlib.sha256,
+        ).hexdigest()
+    return hashlib.sha256(raw_key.encode()).hexdigest()
 
 # Existing dependency — keep as-is
 DbSession = Annotated[AsyncSession, Depends(get_db)]
@@ -32,8 +48,14 @@ async def get_current_user(
     Computes SHA-256 hash of the raw key and looks it up in users.api_key_hash.
     Raises 401 for both missing and invalid keys (no distinction — prevents enumeration).
     """
-    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    key_hash = hash_api_key(raw_key)
     result = await db.execute(select(User).where(User.api_key_hash == key_hash))
+    user = result.scalar_one_or_none()
+
+    # M3: backward compat — if pepper is set but key was stored without it, try plain hash
+    if user is None and settings.api_key_pepper:
+        plain_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+        result = await db.execute(select(User).where(User.api_key_hash == plain_hash))
     user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=401, detail="Invalid API key")

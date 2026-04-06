@@ -4,7 +4,6 @@ POST /api/v1/keys  -- generate a new API key (no auth required)
 GET  /api/v1/keys/verify -- verify an existing API key (auth required)
 """
 
-import hashlib
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -13,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.dependencies import CurrentUser
+from app.dependencies import CurrentUser, hash_api_key
 from app.models.user import User
 from app.schemas.auth import APIKeyCreate, APIKeyResponse
 
@@ -41,7 +40,7 @@ async def generate_api_key(
             raise HTTPException(status_code=409, detail="Email already registered")
 
     def _make_user(raw_key: str) -> User:
-        key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+        key_hash = hash_api_key(raw_key)
         return User(
             api_key_hash=key_hash,
             email=body.email,
