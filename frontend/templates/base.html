@@ -63,7 +63,7 @@
   /* Layout */
   --max-width: 1200px;
   --content-width: 800px;
-  --nav-height: 52px;
+  --nav-height: 88px;
   --sidebar-width: 220px;
   --radius: 3px;
   --radius-lg: 6px;
@@ -278,14 +278,20 @@ li { margin-bottom: 0.25rem; }
   align-items: center;
   text-decoration: none;
   flex-shrink: 0;
+  gap: 10px;
 }
 
 .ct-nav__logo:hover { text-decoration: none; }
 .ct-nav__logo:visited { color: var(--text-primary); }
 
+.ct-nav__logo-img {
+  height: 60px;
+  width: 60px;
+}
+
 .ct-nav__logo-text {
   font-family: var(--font-heading);
-  font-size: 1.1rem;
+  font-size: 1.5rem;
   font-weight: 700;
   color: var(--text-primary);
 }
@@ -294,14 +300,15 @@ li { margin-bottom: 0.25rem; }
 .ct-nav__links {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 2px;
   list-style: none;
   margin: 0;
-  flex-shrink: 0;
+  flex: 1;
 }
 
 .ct-nav__links a {
-  font-size: 0.9rem;
+  font-size: 1rem;
   font-weight: 400;
   color: var(--text-secondary);
   padding: 6px 12px;
@@ -683,6 +690,7 @@ li { margin-bottom: 0.25rem; }
   <nav class="ct-nav" id="ct-nav">
     <div class="ct-nav__inner">
       <a href="{{ url('/') }}" class="ct-nav__logo">
+        <img src="/static/logo.png?v={{ build_version }}" alt="CommonTrace" class="ct-nav__logo-img">
         <span class="ct-nav__logo-text">CommonTrace</span>
       </a>
 
@@ -694,7 +702,6 @@ li { margin-bottom: 0.25rem; }
         <li><a href="https://docs.commontrace.org" target="_blank" rel="noopener">{{ t('nav.docs') }}</a></li>
       </ul>
 
-      <div class="ct-nav__spacer"></div>
 
       <span class="ct-nav__badge">
         {{ t('nav.traces_count', count=total_traces) }}
