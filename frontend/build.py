@@ -26,7 +26,7 @@ SAFE_TAGS = {
     "sup", "sub",
 }
 SAFE_ATTRS = {
-    "a": {"href", "title", "rel"},
+    "a": {"href", "title"},
     "img": {"src", "alt", "title"},
     "code": {"class"},
     "span": {"class"},
@@ -204,7 +204,7 @@ def build():
             home_tpl.render(
                 recent_traces=traces[:10],
                 top_languages=top_languages,
-                page_title=f"CommonTrace — {t('nav.subtitle')}",
+                page_title=f"CommonTrace | {t('nav.subtitle')}",
             )
         )
 
@@ -215,7 +215,7 @@ def build():
         (browse_dir / "index.html").write_text(
             browse_tpl.render(
                 traces=traces,
-                page_title=f"{t('browse.title')} — CommonTrace",
+                page_title=f"{t('browse.title')} | CommonTrace",
             )
         )
 
@@ -229,7 +229,7 @@ def build():
                 trace_tpl.render(
                     trace=trace,
                     related_traces=related,
-                    page_title=f"{trace['title']} — CommonTrace",
+                    page_title=f"{trace['title']} | CommonTrace",
                 )
             )
 
@@ -242,7 +242,7 @@ def build():
                 tag_tpl.render(
                     tag=tag,
                     traces=tag_traces,
-                    page_title=f"{tag} — CommonTrace",
+                    page_title=f"{tag} | CommonTrace",
                 )
             )
 
@@ -251,7 +251,7 @@ def build():
         about_dir = lang_out / "about"
         about_dir.mkdir(parents=True, exist_ok=True)
         (about_dir / "index.html").write_text(
-            about_tpl.render(page_title=f"{t('about.title')} — CommonTrace")
+            about_tpl.render(page_title=f"{t('about.title')} | CommonTrace")
         )
 
         print(f"Generated [{lang}]: homepage, browse, {len(traces)} traces, {len(tag_index)} tags, about")
