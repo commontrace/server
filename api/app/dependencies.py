@@ -56,7 +56,7 @@ async def get_current_user(
     if user is None and settings.api_key_pepper:
         plain_hash = hashlib.sha256(raw_key.encode()).hexdigest()
         result = await db.execute(select(User).where(User.api_key_hash == plain_hash))
-    user = result.scalar_one_or_none()
+        user = result.scalar_one_or_none()
     if user is None:
         raise HTTPException(status_code=401, detail="Invalid API key")
     return user
