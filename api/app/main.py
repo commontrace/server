@@ -12,7 +12,7 @@ from app.logging_config import configure_logging
 from app.metrics import metrics_endpoint
 from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.middleware.body_limit import BodySizeLimitMiddleware
-from app.routers import amendments, auth, moderation, reputation, search, tags, telemetry, traces, votes
+from app.routers import amendments, analytics, auth, moderation, reputation, search, tags, telemetry, traces, votes
 from app.worker.consolidation_worker import consolidation_worker_loop
 from app.worker.embedding_worker import process_batch
 from app.services.embedding import EmbeddingService
@@ -109,6 +109,9 @@ app.include_router(tags.router)
 
 # Telemetry router
 app.include_router(telemetry.router)
+
+# Analytics router (aggregate-only, unauthenticated by design — dashboard endpoint)
+app.include_router(analytics.router)
 
 # H2: Gate /metrics behind auth (only available when debug=True)
 if settings.debug:

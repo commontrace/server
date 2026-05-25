@@ -1,13 +1,29 @@
-"""Telemetry router — anonymized usage stats from skill clients."""
+"""Telemetry router — anonymized usage stats from skill clients.
 
-from fastapi import APIRouter
-from pydantic import BaseModel
+Three endpoints:
+  POST /api/v1/telemetry/triggers — per-session trigger effectiveness (opt-in)
+  POST /api/v1/telemetry/install  — install beacon (fires once per install)
+  POST /api/v1/telemetry/ping     — lightweight heartbeat (daily, updates last_seen)
+"""
+
+from datetime import datetime, timezone
+from typing import Optional
+
+from fastapi import APIRouter, Request
+from pydantic import BaseModel, Field
+from sqlalchemy import update
 
 from app.dependencies import CurrentUser, DbSession
 from app.middleware.rate_limiter import WriteRateLimit
 from app.models.trigger_stats import TriggerStats
+from app.models.user import User
 
 router = APIRouter(prefix="/api/v1/telemetry", tags=["telemetry"])
+
+
+# ---------------------------------------------------------------------------
+# Trigger stats (unchanged)
+# ---------------------------------------------------------------------------
 
 
 class TriggerStatsBody(BaseModel):
@@ -26,12 +42,7 @@ async def report_trigger_stats(
     db: DbSession,
     _rate: WriteRateLimit,
 ) -> TriggerStatsResponse:
-    """Accept anonymized trigger effectiveness stats from a skill client.
-
-    Payload: {"session_id": "...", "trigger_stats": {"bash_error": {"total": 5, "consumed": 2, "rate": 0.4}, ...}}
-
-    No rate limiting — this fires once per session at most.
-    """
+    """Accept anonymized trigger effectiveness stats from a skill client."""
     record = TriggerStats(
         session_id=body.session_id,
         stats_json=body.trigger_stats,
@@ -39,3 +50,77 @@ async def report_trigger_stats(
     db.add(record)
     await db.commit()
     return TriggerStatsResponse()
+
+
+# ---------------------------------------------------------------------------
+# Install beacon
+# ---------------------------------------------------------------------------
+
+
+class InstallBody(BaseModel):
+    platform: Optional[str] = Field(default=None, max_length=50)
+    skill_version: Optional[str] = Field(default=None, max_length=20)
+    install_source: Optional[str] = Field(default=None, max_length=50)
+
+
+def _country_from_request(request: Request) -> Optional[str]:
+    """Extract 2-letter country code from common CDN headers."""
+    for header in ("CF-IPCountry", "X-Vercel-IP-Country", "X-Country-Code"):
+        val = request.headers.get(header)
+        if val and len(val) == 2 and val.isalpha():
+            return val.upper()
+    return None
+
+
+@router.post("/install", status_code=201)
+async def report_install(
+    body: InstallBody,
+    request: Request,
+    user: CurrentUser,
+    db: DbSession,
+) -> dict:
+    """Record install metadata. Idempotent — overwrites prior values."""
+    now = datetime.now(timezone.utc)
+    country = _country_from_request(request)
+    stmt = (
+        update(User)
+        .where(User.id == user.id)
+        .values(
+            platform=body.platform,
+            skill_version=body.skill_version,
+            install_source=body.install_source,
+            last_seen_at=now,
+            country_code=country if country else User.country_code,
+        )
+    )
+    await db.execute(stmt)
+    await db.commit()
+    return {"status": "ok"}
+
+
+# ---------------------------------------------------------------------------
+# Heartbeat / DAU ping
+# ---------------------------------------------------------------------------
+
+
+@router.post("/ping", status_code=204)
+async def ping(
+    request: Request,
+    user: CurrentUser,
+    db: DbSession,
+) -> None:
+    """Lightweight heartbeat — bumps last_seen_at. Skill calls this once per
+    session start (locally rate-limited to once per day per install).
+    """
+    now = datetime.now(timezone.utc)
+    country = _country_from_request(request)
+    stmt = (
+        update(User)
+        .where(User.id == user.id)
+        .values(
+            last_seen_at=now,
+            country_code=country if country else User.country_code,
+        )
+    )
+    await db.execute(stmt)
+    await db.commit()

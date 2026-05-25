@@ -34,6 +34,13 @@ class User(Base):
         onupdate=func.now(),
         nullable=False,
     )
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    country_code: Mapped[Optional[str]] = mapped_column(String(2), nullable=True)
+    platform: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    skill_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    install_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
 
     # Relationships
     traces: Mapped[list["Trace"]] = relationship("Trace", back_populates="contributor")
