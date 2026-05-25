@@ -12,7 +12,7 @@ from app.logging_config import configure_logging
 from app.metrics import metrics_endpoint
 from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.middleware.body_limit import BodySizeLimitMiddleware
-from app.routers import amendments, analytics, auth, moderation, reputation, search, tags, telemetry, traces, votes
+from app.routers import admin, amendments, analytics, auth, moderation, reputation, search, tags, telemetry, traces, votes
 from app.worker.consolidation_worker import consolidation_worker_loop
 from app.worker.embedding_worker import process_batch
 from app.services.embedding import EmbeddingService
@@ -79,7 +79,7 @@ app.add_middleware(
         "https://docs.commontrace.org",
     ],
     allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-    allow_headers=["X-API-Key", "Content-Type"],
+    allow_headers=["X-API-Key", "X-Admin-Token", "Content-Type"],
     allow_credentials=False,
 )
 
@@ -112,6 +112,9 @@ app.include_router(telemetry.router)
 
 # Analytics router (aggregate-only, unauthenticated by design — dashboard endpoint)
 app.include_router(analytics.router)
+
+# Admin router (PII-revealing, gated by X-Admin-Token header / ADMIN_DASHBOARD_TOKEN env var)
+app.include_router(admin.router)
 
 # H2: Gate /metrics behind auth (only available when debug=True)
 if settings.debug:

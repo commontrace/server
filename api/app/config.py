@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     api_key_header_name: str = "X-API-Key"
     openai_api_key: str = ""
 
+    # Admin dashboard token — gates /api/v1/admin/* endpoints. Empty disables admin routes.
+    admin_dashboard_token: str = ""
+
     # Temporal decay
     temporal_decay_default_half_life_days: int = 365
 
