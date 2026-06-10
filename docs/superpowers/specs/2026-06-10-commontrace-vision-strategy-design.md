@@ -46,7 +46,7 @@ Production snapshot (2026-06-10): 4 users, 1 MAU, 65 traces, 0 votes, 1,827 retr
 Non-negotiable engineering items, regardless of feature order:
 
 1. **Break the death spiral.** `trigger_feedback` reinforcement must keep an exploration floor (epsilon-greedy) — search rate must never decay to zero on a thin corpus, or the skill teaches itself to stop searching.
-2. **Adversarial trust baseline before scale.** Traces are a prompt-injection delivery channel. Provenance display, quarantine for new contributors, and hard "never auto-execute trace content" framing in the skill. One poisoned-trace incident ends the commons.
+2. **Adversarial trust baseline before scale.** Traces are a prompt-injection delivery channel. Provenance display and hard "never auto-execute trace content" framing in the skill are always active. Primary trust mechanism: the contribution gate (§6.4) — every contributor enters vouched or Keeper-reviewed. Quarantine of new members' first traces: **temporarily deactivated (founder decision, 2026-06-10)** while the invitation gate is the binding constraint. Reactivation triggers (any one): contribution opens beyond vouched/earned entry, first trust incident, or Phase 3 scale. One poisoned-trace incident ends the commons.
 3. **North-star metric: assisted-resolution rate** — % of searches where a retrieved trace contributed to the fix. Wire end-to-end on existing telemetry.
 4. **Ambient presence MVP** — topic-level activity counters from existing telemetry; cheapest feature that makes the network feel alive.
 
@@ -93,7 +93,7 @@ Reputation unlocks **powers**, not wallpaper (Stack Overflow privilege-ladder le
 | **Founding Tracers** | First ~100 claimed contributors. Council input: naming decisions, spec RFC votes, roadmap votes. Permanent one-shot badge, never earnable again. | Being early |
 | **Keepers** (per domain, e.g. "Keeper of pgvector") | Domain stewardship: curate, retire stale traces, confirm convergence. | Confirmed-helpful traces in domain over trailing 90 days (quality-weighted, unspammable — Local Legends pattern: consistency holds status the merely-fast can't take) |
 | **Weavers** | Cross-trace curation: merge convergent traces, link genealogy, dedupe. | Reputation threshold + Keeper nomination |
-| **Wardens** | Trust & moderation: review flags, quarantine queue, contributor vetting. | High reputation + council approval |
+| **Wardens** | Trust & moderation: review flags, quarantine queue (when quarantine reactivates, §4), contributor vetting. | High reputation + council approval |
 | **Heralds** | Communication & outreach: launch weeks, community content, beachhead evangelism. | Volunteer + council approval |
 | **Pathfinders** | Onboarding: welcome new members, first-contribution guidance. | Volunteer, low bar — the gateway role |
 
@@ -109,7 +109,23 @@ Prizes: peer-given recognition (barnstar-equivalent "lifesaver" marks with thank
 - **Rituals** — monthly Commons Pulse (synchronized drop: what the net learned), released the same day as each user's personal Compiled recap (§5) — one ritual, two views: personal and network. Quarterly launch weeks (Supabase pattern), seasonal knowledge drives targeting gap domains via Wanted Board.
 - **Governance trajectory** — open spec → public RFC process → eventual neutral-foundation posture (the MCP→Linux Foundation move converted "their protocol" into "our standard"). Committed publicly now.
 
-### 6.4 Cost (acknowledged)
+### 6.4 Gated Contribution: Lineage, Vouching, Earned Entry
+
+Ostrom's first principle of enduring commons: clearly defined boundaries on who can provision. Precedents: Linux kernel (open to read, contribution through maintainer trust chains), Wikipedia's protection tiers, Lobste.rs invite tree. Gating writes is what protects the commons from the tragedy — spam, slop, poisoned traces.
+
+- **Read/search: open to all.** Consumers cost nothing and feed the Wanted Board demand signal. The 90% of the 1-9-90 ladder is untouched.
+- **Contribute: gated, three doors:**
+  1. **Vouched** — an existing member spends an invite and stakes reputation on the invitee. Visible lineage tree (who vouched whom) — members have lineage the way traces have genealogy. Inviter reputation suffers if invitee abuses (Lobste.rs accountability).
+  2. **Earned** — fill a Wanted Board quest; a Keeper reviews the submission as an entry exam. The door for talent with no connections.
+  3. **Founding** — the initial ~100 Founding Tracers, founder-invited.
+- **Invite economy:** rationed (2–3 per member), replenished by confirmed-helpful contributions. Invite supply tied to proven value — invites stay scarce, precious, and unspammable. Invites double as viral currency (Gmail 2004 pattern): every invite is a warm personal recommendation.
+- **Local-first capture is the funnel-saver:** uninvited users' agents still record everything to `local.db` (`local_knowledge` table exists). Nothing is lost mid-session. Invitation unlocks *publishing*, not capturing — "You've been invited. 23 traces ready to share." Instant corpus contribution + instant status moment.
+- **Parrainage (mentorship):** Teahouse-shape, not assigned pairing (Wikipedia evidence: drop-in Q&A space dramatically outperformed 1:1 Adopt-a-user). Pathfinders staff a first-contribution space; mentor vouching is the same trust mechanism as the invite door.
+- **Quarantine of first traces: temporarily deactivated** (see §4, with reactivation triggers). The gate itself is the trust layer while N is small and every contributor is personally vouched.
+
+Manifesto language adjusts accordingly: *readable by everyone, owned by everyone, stewarded by those who earned trust.*
+
+### 6.5 Cost (acknowledged)
 
 Community requires founder presence daily for roughly a year: answering every Discussion, thanking contributors by name, showing up in beachhead communities. Not delegatable early. Code of conduct + moderation basics from day one — one toxic early member poisons a small community permanently.
 
@@ -128,6 +144,7 @@ Wikipedia-style user pages, dev-culture edition (precedent: GitHub profile READM
 
 - **Anonymous by default.** Contribution never requires identity; anonymous traces still help the commons.
 - **One-tap claim** at contribution time ("contribute as @handle / anonymously"). Claimed traces accrue profile status, plaques, roles.
+- **Invitation binds to the API key, not a public handle.** Pseudonymous contribution is fully compatible with the gate (§6.4): the lineage tree holds the voucher accountable without forcing public identity on the invitee.
 - Share artifacts and trace content pass `scanner.py` (PII) + aggregate-shapes-only rule before anything leaves the machine.
 
 ## 9. Metrics
@@ -140,7 +157,7 @@ Wikipedia-style user pages, dev-culture edition (precedent: GitHub profile READM
 | Phase | Network size | Ships |
 |---|---|---|
 | 1 | N=1 (now) | Brain graph, struggle-grid, Resolved-with trailer, README badge, monthly Compiled. All local-first. Death-spiral fix. Friction-kill onboarding (plugin install → auto-keygen → first value same session). |
-| 2 | N≈50 (beachhead) | Wanted Board, auto-kudos, hours-saved counters, plaques, Keeper titles, user pages, claim flow, GitHub Discussions, manifesto, founding cohort. Adversarial-trust baseline before opening contribution wide. |
+| 2 | N≈50 (beachhead) | Contribution gate live: invites + lineage tree + earned-entry review (§6.4). Wanted Board, auto-kudos, hours-saved counters, plaques, Keeper titles, user pages, claim flow, GitHub Discussions, manifesto, founding cohort. Provenance display + never-auto-execute baseline ship with the gate; quarantine deferred per §4. |
 | 3 | N≈500+ | Genealogy trees, ambient presence feed, launch weeks, Discord, open trace-format spec push, governance RFCs. |
 
 Launch pulse: Show HN — "I gave AI agents a shared brain" + brain-graph screenshots + local-first/open-data trust story. Founding-cohort badge live at launch.
