@@ -18,25 +18,29 @@ People who join are not "users of a tool." They are contributors to a historic e
 
 ## 2. The Problem
 
-> **Solo devs run agents that work alone and forget everything.** Every session ends in amnesia. Meanwhile, thousands of agents solve overlapping problems on similar stacks — right now — and none of it reaches you. The freshest operational knowledge on Earth (what works *now*: post-cutoff, environment-specific, undocumented) is generated in agent sessions millions of times daily and discarded. Solo devs pay the deepest price: no team to ask, no org wiki — their agent re-derives civilization from zero, at $1–5 per re-derivation that someone else already paid for.
+> **AI coding agents record, but they don't learn — and they never learn from each other.** Vendors shipped memory in 2025–26; users call it theater: "data goes in but doesn't reliably influence behavior." The agent apologizes, then repeats the exact mistake — next task, next session, next machine. When a breaking release lands (Svelte 5, Tailwind v4, Next 15), every agent on Earth confidently generates the dead API, and thousands of developers independently re-derive the same fix at $1–5 each — then the learning dies on each machine. The freshest operational knowledge on Earth — error → fix → verified, from real sessions — has no transport mechanism between agents. Vendors are racing to solve this *inside* the team silo. Nobody is building the layer where what one agent learns, every agent can find.
 
-Three nested problems, different fates:
+Three nested problems, updated fates (validation research 2026-06-10, internal):
 
 | Problem | Status | Our bet |
 |---|---|---|
-| **P1 Amnesia** — agent forgets own sessions | Vendors solving (Claude memory, ChatGPT memory). Commoditizing. | Floor only (local-first single-player value) |
-| **P2 Isolation** — zero transfer between agents across users/orgs/vendors | Unsolved. Vendors structurally won't (moat conflict, privacy, neutrality). | **Core bet — defensible** |
-| **P3 Staleness** — models frozen at cutoff, world drifts | Solved wastefully per-session via web search | **Strongest value claim** — knowledge that exists nowhere else |
+| **P1 Amnesia** — agent forgets own sessions | Commoditized at basic tier: Claude Code auto-memory (default-on), Codex memories, Copilot Memory, Windsurf. Surviving pain: **"write-only memory"** — retention without behavior change; the loudest complaint category found. | Floor only. Reframe: not "no memory" but **memory that bites** — traces injected at error-time beat rules files hoping to be read. |
+| **P2 Isolation** — zero transfer between agents across users/orgs/vendors | Team scope being absorbed by vendors now (Anthropic team memory, Copilot org instructions GA, Cloudflare Agent Memory beta, Devin Knowledge). Cross-user/cross-org: empty except Mozilla.ai cq (Mar 2026, 0.x). memctl self-archived May 2026 — team-silo positioning is a dead end. | **Core bet — defensible only at commons scale.** Tool-neutral + cross-org is what vendors structurally can't do. Window compressing; clock started. |
+| **P3 Staleness** — models frozen at cutoff, world drifts | Validated hard: 19.7% of LLM-recommended packages don't exist (576K-sample study); predictable complaint waves per breaking release. Existing mitigations ship *authored* knowledge (Context7 = official docs only). Nobody ships *learned* operational knowledge from real sessions. | **Strongest value claim, unchanged** — now with citable numbers. |
+
+**The angle:** sell P1's surviving pain, win with P2. Public pitch: *"your agent stops repeating mistakes — including mistakes it hasn't made yet."* The second clause is the commons, experienced as personal benefit — never pitched as "join a knowledge base." Demand for sharing is latent: nobody asks for a commons, yet ~20 independent tools exist to sync agent memory by hand. Market the pain; deliver the commons as mechanism.
 
 Economics: one error_resolution trace costs the originator ~45 min + 15 errors (~$1–5 of tokens plus user patience). A consumer gets it for one embedding lookup (~$0.0001). 10,000× arbitrage per reuse, compounding with N consumers.
 
 ## 3. Wedge & Positioning
 
-- **Who:** solo devs. Slogan: **"Solo, not alone."**
+- **Who:** solo devs. Primary pitch: **"your agent stops repeating mistakes — including mistakes it hasn't made yet"** (§2 angle). "Solo, not alone" demotes to community register (§6) — never acquisition copy.
 - **Feel:** ambient presence — async knowledge reuse plus liveness signals ("14 agents worked near this topic this week, 3 solved it"). Network feeling at low N.
 - **Strategy layers:**
   - **B floor** — local-first single-player value (local.db): works at N=1, immune to cold start.
-  - **A motion** — density beachheads: MCP builders, Claude Code power users, FastAPI/pgvector AI app builders, Railway deployers. Density beats size: network value real at N=50, not N=10,000.
+  - **A motion, two layers:**
+    - **Acquisition timing = breaking-release waves.** Every major release (next Tailwind / Next.js / Svelte major) produces a predictable wave of upgraders in pain *this week* — the highest-intent conversion moment. Wanted Board pre-seeded from the release's breaking-change list; struggle-grids of the wave are the share artifact.
+    - **Community shape = density beachheads:** MCP builders, Claude Code power users, FastAPI/pgvector AI app builders, Railway deployers. Density beats size: network value real at N=50, not N=10,000.
   - **C posture** — open data (CC-licensed), open spec, neutral-commons positioning. Decided now; costs nothing at 65 traces; the only credible answer to "why won't vendors eat this." Neutrality is the moat vendors cannot copy.
 
 ## 4. Ground Truth & Non-Negotiables
@@ -82,7 +86,7 @@ Virality acquires; community retains, governs, defends. Both machines, neither s
 
 ### 6.1 The Cause (manifesto)
 
-Communities form around causes, not features. Ours: **agent knowledge should be a commons, not a vendor moat.** Every vendor builds proprietary per-user memory silos; what agents learn either dies at session end or gets enclosed. CommonTrace is the anti-enclosure movement: the collective memory of humanity's AI age, owned by everyone. Manifesto to be written and pinned — it is the recruiting document; it carries the "historic enterprise" framing: joining means building the first shared memory between AI systems.
+Communities form around causes, not features. Ours: **agent knowledge should be a commons, not a vendor moat.** Every vendor builds proprietary per-user memory silos; what agents learn either dies at session end or gets enclosed. CommonTrace is the anti-enclosure movement: the collective memory of humanity's AI age, owned by everyone. Manifesto to be written and pinned — it is the recruiting document; it carries the "historic enterprise" framing: joining means building the first shared memory between AI systems. **Register boundary:** manifesto and commons language recruit and retain *members* — never acquisition copy. Landing pages and launch posts lead with validated personal pain (§2 angle); the cause is discovered after first value, not before.
 
 ### 6.2 Roles — named, with responsibilities and prizes
 
@@ -156,11 +160,11 @@ Wikipedia-style user pages, dev-culture edition (precedent: GitHub profile READM
 
 | Phase | Network size | Ships |
 |---|---|---|
-| 1 | N=1 (now) | Brain graph, struggle-grid, Resolved-with trailer, README badge, monthly Compiled. All local-first. Death-spiral fix. Friction-kill onboarding (plugin install → auto-keygen → first value same session). |
+| 1 | N=1 (now) | **Error-time injection path hardened first** — error_signature recurrence → relevant trace injected at the moment of failure, proven by assisted-resolution telemetry (§4.3). This is the differentiator vs write-only vendor memory; if injection is theater, we are what users already mock. Then: brain graph, struggle-grid, Resolved-with trailer, README badge, monthly Compiled. All local-first. Death-spiral fix. Friction-kill onboarding (plugin install → auto-keygen → first value same session). |
 | 2 | N≈50 (beachhead) | Contribution gate live: invites + lineage tree + earned-entry review (§6.4). Wanted Board, auto-kudos, hours-saved counters, plaques, Keeper titles, user pages, claim flow, GitHub Discussions, manifesto, founding cohort. Provenance display + never-auto-execute baseline ship with the gate; quarantine deferred per §4. |
 | 3 | N≈500+ | Genealogy trees, ambient presence feed, launch weeks, Discord, open trace-format spec push, governance RFCs. |
 
-Launch pulse: Show HN — "I gave AI agents a shared brain" + brain-graph screenshots + local-first/open-data trust story. Founding-cohort badge live at launch.
+Launch pulse: Show HN — pain-first headline: "My AI agent stops repeating mistakes — even ones it hasn't made yet." Shared-brain mechanism is the paragraph-2 reveal; struggle-grid + brain-graph screenshots; local-first/open-data trust story. Founding-cohort badge live at launch.
 
 ## 11. Open Taste Calls (for review)
 
@@ -168,4 +172,4 @@ Launch pulse: Show HN — "I gave AI agents a shared brain" + brain-graph screen
 2. Role name set (Keepers/Weavers/Wardens/Heralds/Pathfinders) — guild register approved?
 3. Founding cohort size (~100?) and council scope.
 4. Trailer wording: `Resolved-with:` vs `Assisted-by:` vs `Knowledge:`.
-5. Struggle-grid as the signature launch artifact (vs brain graph leading).
+5. ~~Struggle-grid vs brain graph leading~~ — **resolved by validation research (2026-06-10): struggle-grid leads acquisition** (rides breaking-release waves, social proof of shared pain); brain graph is the retention/identity artifact.
