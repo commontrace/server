@@ -43,3 +43,9 @@ frontend/seed_traces.json
 
 # Planning / audit docs (local only)
 .planning/
+
+# Private research with named leads — repo is public, never commit
+docs/superpowers/research/
+
+# Claude Code agent worktrees (never commit as gitlinks)
+.claude/worktrees/
