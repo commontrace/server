@@ -1,7 +1,7 @@
 # CommonTrace — Vision, Problem, Distribution & Community Strategy
 
 Date: 2026-06-10
-Status: Draft for review
+Status: Approved (founder, 2026-06-10) — all taste calls resolved (§11)
 Scope: Strategic design — problem definition, wedge, viral architecture, community architecture, identity surfaces. Implementation plans derive from this document.
 
 ---
@@ -14,7 +14,7 @@ Models transmit knowledge generationally — retraining, 6–12 month lag, publi
 
 People who join are not "users of a tool." They are contributors to a historic enterprise: the first shared memory between AI systems, owned by everyone — a commons, not a vendor moat.
 
-**Language register (taste call, flagged):** internal community spirit may playfully use "hivemind"; public-facing brand language stays humanist — "collective memory," "the commons," "what agents learn belongs to everyone." Borg connotations read dystopian to the exact audience we recruit. Recommend: humanist words official, hivemind as community in-joke only.
+**Language register (resolved, §11):** internal community spirit may playfully use "hivemind"; public-facing brand language stays humanist — "collective memory," "the commons," "what agents learn belongs to everyone." Borg connotations read dystopian to the exact audience we recruit. Recommend: humanist words official, hivemind as community in-joke only.
 
 ## 2. The Problem
 
@@ -166,10 +166,10 @@ Wikipedia-style user pages, dev-culture edition (precedent: GitHub profile READM
 
 Launch pulse: Show HN — pain-first headline: "My AI agent stops repeating mistakes — even ones it hasn't made yet." Shared-brain mechanism is the paragraph-2 reveal; struggle-grid + brain-graph screenshots; local-first/open-data trust story. Founding-cohort badge live at launch.
 
-## 11. Open Taste Calls (for review)
+## 11. Taste Calls — all resolved (founder, 2026-06-10)
 
-1. "Hivemind" — internal spirit vs public brand word (recommendation: internal only).
-2. Role name set (Keepers/Weavers/Wardens/Heralds/Pathfinders) — guild register approved?
-3. Founding cohort size (~100?) and council scope.
-4. Trailer wording: `Resolved-with:` vs `Assisted-by:` vs `Knowledge:`.
-5. ~~Struggle-grid vs brain graph leading~~ — **resolved by validation research (2026-06-10): struggle-grid leads acquisition** (rides breaking-release waves, social proof of shared pain); brain graph is the retention/identity artifact.
+1. **"Hivemind"** — internal community in-joke only; public language stays humanist.
+2. **Role names** — Keepers / Weavers / Wardens / Heralds / Pathfinders approved (guild register).
+3. **Founding cohort** — ~100 Founding Tracers; council scope: naming decisions, spec RFC votes, roadmap votes.
+4. **Trailer wording** — `Resolved-with:` (citation register, avoids the Assisted-by strip-it economy). Provisional — revisit if opt-out/strip metrics (§5 guardrails) flag resentment.
+5. **Struggle-grid leads acquisition** (rides breaking-release waves, social proof of shared pain); brain graph is the retention/identity artifact. Resolved by validation research.
