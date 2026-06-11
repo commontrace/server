@@ -82,17 +82,14 @@ score = similarity * trust * depth * decay * ctx_boost * convergence * temp_mult
 ```
 
 ### Persistent Local Store
-SQLite at `~/.commontrace/local.db` — survives across sessions:
-- `projects` — working directory → language/framework mapping
+SQLite at `~/.commontrace/local.db` (schema v3 as of skill v0.3.0) — survives across sessions, 5 tables:
+- `projects` — working directory → project identity (language/framework fingerprint)
 - `sessions` — per-session stats (errors, resolutions, contributions)
-- `entities` — accumulated language/framework/domain knowledge per project
-- `events` — migrated JSONL events for cross-session analysis
-- `error_signatures` — fuzzy error signatures for recurrence detection
-- `trigger_feedback` — which triggers led to trace consumption (reinforcement)
-- `local_knowledge` — contributed traces with temperature, decay, half-life, evergreen, bi-temporal
-- `discovered_knowledge` — cached traces from others (search results, get_trace responses)
-- `session_insights` — top pattern + score per session for recall
-- `error_resolutions` — error signature → fix files + command pairing
+- `trace_cache` — pointers to traces seen (id + title only, no content)
+- `trigger_feedback` — fired/consumed per trigger (reinforcement; assisted resolutions recorded as `local:<hash>` consumption)
+- `error_signatures` — deduplicated per project (UNIQUE(project_id, signature)) with resolution payload: `last_seen_at`, `seen_count`, `resolved_at`, `fix_command`, `fix_files` (JSON basenames), `trace_id`. Powers error-time injection: when a previously resolved signature recurs, the known fix is injected at the failure moment.
+
+Source of truth is `hooks/local_store.py` (`_SCHEMA` + `CURRENT_SCHEMA_VERSION`) — trust the code over this list.
 
 ## Development Workflow
 
