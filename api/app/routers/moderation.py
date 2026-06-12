@@ -139,11 +139,16 @@ async def remove_trace(
 ) -> dict:
     """Hard-delete a trace and all its related records.
 
-    Deletes in dependency order (no cascade FKs in schema):
+    Deletes in dependency order (no cascade FKs in schema). Every table that
+    carries an FK to traces.id must be cleared first or the final delete raises
+    ForeignKeyViolation (surfaces as 500):
       1. votes
       2. amendments (via original_trace_id FK)
       3. trace_tags association rows
-      4. the trace itself
+      4. retrieval_logs (trace_id FK)
+      5. rif_shadows (loser_trace_id / winner_trace_id FKs)
+      6. trace_relationships (source_trace_id / target_trace_id FKs)
+      7. the trace itself
     """
     result = await db.execute(select(Trace).where(Trace.id == trace_id))
     trace = result.scalar_one_or_none()
@@ -165,7 +170,31 @@ async def remove_trace(
         {"tid": trace_id},
     )
 
-    # 4. Delete the trace itself
+    # 4. Delete retrieval log rows (every search/injection that surfaced it)
+    await db.execute(
+        text("DELETE FROM retrieval_logs WHERE trace_id = :tid"),
+        {"tid": trace_id},
+    )
+
+    # 5. Delete RIF shadow rows (trace appears as loser or winner)
+    await db.execute(
+        text(
+            "DELETE FROM rif_shadows "
+            "WHERE loser_trace_id = :tid OR winner_trace_id = :tid"
+        ),
+        {"tid": trace_id},
+    )
+
+    # 6. Delete trace relationship rows (trace as source or target)
+    await db.execute(
+        text(
+            "DELETE FROM trace_relationships "
+            "WHERE source_trace_id = :tid OR target_trace_id = :tid"
+        ),
+        {"tid": trace_id},
+    )
+
+    # 7. Delete the trace itself
     await db.delete(trace)
     await db.commit()
 
