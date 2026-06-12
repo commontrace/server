@@ -1,7 +1,7 @@
 import asyncio
 from logging.config import fileConfig
 
-from sqlalchemy import pool
+from sqlalchemy import pool, text
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import async_engine_from_config
 
@@ -57,11 +57,35 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection: Connection) -> None:
-    context.configure(connection=connection, target_metadata=target_metadata)
+# Arbitrary app-unique bigint ("ctmigr" as bytes). Must stay distinct from any
+# other advisory-lock key this app ever uses against the same database.
+MIGRATION_LOCK_KEY = 0x63746D696772
 
-    with context.begin_transaction():
-        context.run_migrations()
+
+def do_run_migrations(connection: Connection) -> None:
+    # api and worker both run `alembic upgrade head` at boot; without
+    # serialization the loser crashes on duplicate CREATE TABLE
+    # (pg_type_typname_nsp_index). Session-level lock: the loser blocks here,
+    # then sees an up-to-date alembic_version and no-ops. Released in the
+    # finally block, and by PostgreSQL itself if the connection dies mid-run.
+    connection.execute(
+        text("SELECT pg_advisory_lock(:key)"), {"key": MIGRATION_LOCK_KEY}
+    )
+    # End the transaction SQLAlchemy autobegan for the SELECT above. If it is
+    # still open when alembic configures, alembic joins it instead of managing
+    # its own and never commits — every migration then silently rolls back
+    # when the connection closes. The session-level lock survives the commit.
+    connection.commit()
+    try:
+        context.configure(connection=connection, target_metadata=target_metadata)
+
+        with context.begin_transaction():
+            context.run_migrations()
+    finally:
+        connection.execute(
+            text("SELECT pg_advisory_unlock(:key)"), {"key": MIGRATION_LOCK_KEY}
+        )
+        connection.commit()
 
 
 async def run_async_migrations() -> None:
