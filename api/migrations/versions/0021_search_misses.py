@@ -8,6 +8,7 @@ Revises: 200a1b2c3d4e
 
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import postgresql
 
 revision: str = "210a1b2c3d4e"
 down_revision: str = "200a1b2c3d4e"
@@ -18,7 +19,7 @@ depends_on = None
 def upgrade() -> None:
     op.create_table(
         "search_misses",
-        sa.Column("id", sa.dialects.postgresql.UUID(as_uuid=True), primary_key=True),
+        sa.Column("id", postgresql.UUID(as_uuid=True), primary_key=True),
         sa.Column("query_text", sa.String(2000), nullable=True),
         sa.Column("tags", sa.String(500), nullable=True),
         sa.Column("language", sa.String(50), nullable=True),
