@@ -39,7 +39,12 @@ from app.services.activation import (
 from app.services.context import compute_context_alignment
 from app.services.decay import temporal_decay_factor
 from app.services.embedding import EmbeddingService, EmbeddingSkippedError
-from app.services.retrieval import record_co_retrievals, record_retrieval_logs, record_retrievals
+from app.services.retrieval import (
+    record_co_retrievals,
+    record_retrieval_logs,
+    record_retrievals,
+    record_search_miss,
+)
 from app.services.tags import normalize_tag
 from app.services.diversity import apply_diversity_sampling
 from app.services.temperature import get_temperature_multiplier
@@ -448,6 +453,9 @@ async def search_traces(
         _track_task(record_retrievals(trace_ids))
         _track_task(record_retrieval_logs(trace_ids, search_session_id))
         _track_task(record_co_retrievals(trace_ids))
+    else:
+        # Zero-result search = Wanted Board demand signal (spec §6.3)
+        _track_task(record_search_miss(body.q, normalized_tags, searcher_fp))
 
     # Attach related traces (top 3 per result by relationship strength)
     if results:

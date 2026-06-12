@@ -12,6 +12,7 @@ from .trigger_stats import TriggerStats
 from .tag_trend import TagTrend
 from .rif_shadow import RifShadow
 from .invitation import Invitation
+from .search_miss import SearchMiss
 
 __all__ = [
     "Base",
@@ -32,4 +33,5 @@ __all__ = [
     "TagTrend",
     "RifShadow",
     "Invitation",
+    "SearchMiss",
 ]

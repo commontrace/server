@@ -133,3 +133,40 @@ async def record_co_retrievals(trace_ids: list[uuid.UUID]) -> None:
             await session.commit()
     except Exception:
         log.warning("co_retrieval_tracking_failed", pair_count=len(pairs), exc_info=True)
+
+
+async def record_search_miss(
+    query_text: str | None, tags: list[str], context: dict | None
+) -> None:
+    """Record a zero-result search as a Wanted Board demand signal (spec §6.3).
+
+    Fire-and-forget — never blocks the search response.
+    Stores only aggregate-shape data: query, tags, language/framework.
+    Never stores code, paths, or repo names.
+    """
+    try:
+        language = None
+        framework = None
+        if isinstance(context, dict):
+            lang_val = context.get("language")
+            fw_val = context.get("framework")
+            language = str(lang_val)[:50] if lang_val else None
+            framework = str(fw_val)[:50] if fw_val else None
+        async with async_session_factory() as session:
+            await session.execute(
+                text(
+                    "INSERT INTO search_misses "
+                    "(id, query_text, tags, language, framework) "
+                    "VALUES (gen_random_uuid(), :query_text, :tags, "
+                    ":language, :framework)"
+                ),
+                {
+                    "query_text": query_text[:2000] if query_text else None,
+                    "tags": ",".join(tags)[:500] if tags else None,
+                    "language": language,
+                    "framework": framework,
+                },
+            )
+            await session.commit()
+    except Exception:
+        log.warning("search_miss_tracking_failed", exc_info=True)
