@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Boolean, DateTime, Float, String, func
+from sqlalchemy import Boolean, DateTime, Float, ForeignKey, Integer, String, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -41,6 +41,19 @@ class User(Base):
     platform: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
     skill_version: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
     install_source: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+
+    # Contribution gate (spec §6.4) — publishing requires an invitation.
+    # Reading and search stay open; can_contribute gates writes only.
+    can_contribute: Mapped[bool] = mapped_column(
+        Boolean, default=False, nullable=False, server_default="false"
+    )
+    entry_door: Mapped[Optional[str]] = mapped_column(String(16), nullable=True)
+    invited_by: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id"), nullable=True
+    )
+    invites_remaining: Mapped[int] = mapped_column(
+        Integer, default=0, nullable=False, server_default="0"
+    )
 
     # Relationships
     traces: Mapped[list["Trace"]] = relationship("Trace", back_populates="contributor")

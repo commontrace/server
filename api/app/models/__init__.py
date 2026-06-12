@@ -11,6 +11,7 @@ from .consolidation_run import ConsolidationRun
 from .trigger_stats import TriggerStats
 from .tag_trend import TagTrend
 from .rif_shadow import RifShadow
+from .invitation import Invitation
 
 __all__ = [
     "Base",
@@ -30,4 +31,5 @@ __all__ = [
     "TriggerStats",
     "TagTrend",
     "RifShadow",
+    "Invitation",
 ]
