@@ -56,7 +56,7 @@ post_tool_use.py → record events (errors/changes/research), detect knowledge c
 stop.py          → score importance, prompt for contribution, persist session data, report telemetry
 ```
 
-### Knowledge Detection Patterns (16 total)
+### Knowledge Detection Patterns (17 total)
 | Weight | Pattern | Signal |
 |--------|---------|--------|
 | 3.0 | error_resolution | error → code change → successful verification |
@@ -75,6 +75,9 @@ stop.py          → score importance, prompt for contribution, persist session 
 | 1.5 | iteration_depth | same file edited 3+ times (scales to 2.0) |
 | 1.5 | workaround | research + errors + changes |
 | 1.0 | temporal_investment | long session with sustained activity |
+| — | fail_then_succeed | bash success after error → change sequence (detected and labeled in artifacts; not yet weighted in stop.py scoring) |
+
+Plus a dynamic `user_emphasis` booster (1.0–1.5) scored in stop.py from structural emphasis signals. Source of truth: `hooks/post_tool_use.py` (detection) + `hooks/stop.py` (scoring) — trust the code over this table.
 
 ### Search Ranking Formula
 ```
