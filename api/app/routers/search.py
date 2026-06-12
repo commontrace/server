@@ -489,6 +489,20 @@ async def search_traces(
         for r in results:
             r.related_traces = related_by_source.get(str(r.id), [])
 
+    # Contributor provenance (spec §4.2): batched display-name lookup
+    if results:
+        contributor_ids = list({r.contributor_id for r in results})
+        name_rows = await db.execute(
+            text(
+                "SELECT id, COALESCE(display_name, 'anon-' || LEFT(id::text, 8)) "
+                "AS name FROM users WHERE id = ANY(:ids)"
+            ),
+            {"ids": contributor_ids},
+        )
+        names_by_id = {row.id: row.name for row in name_rows}
+        for r in results:
+            r.contributor_name = names_by_id.get(r.contributor_id)
+
     # Step H: Search metrics instrumentation
     search_duration.observe(time.monotonic() - start)
     log.info(

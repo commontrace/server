@@ -58,6 +58,7 @@ class TraceResponse(BaseModel):
     valid_from: Optional[datetime] = None
     valid_until: Optional[datetime] = None
     contributor_id: uuid.UUID
+    contributor_name: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

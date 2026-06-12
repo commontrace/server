@@ -30,6 +30,7 @@ class TraceSearchResult(BaseModel):
     similarity_score: float  # cosine similarity = 1 - distance
     combined_score: float    # trust-weighted final score
     contributor_id: uuid.UUID
+    contributor_name: Optional[str] = None
     created_at: datetime
     retrieval_count: int = 0
     depth_score: int = 0

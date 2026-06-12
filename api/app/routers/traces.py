@@ -179,6 +179,16 @@ async def get_trace(
     # Serialize tags to list of name strings for the response schema
     tag_names = [tag.name for tag in trace.tags]
 
+    # Contributor provenance (spec §4.2): display name or stable anon handle
+    name_result = await db.execute(
+        text(
+            "SELECT COALESCE(display_name, 'anon-' || LEFT(id::text, 8)) "
+            "FROM users WHERE id = :uid"
+        ),
+        {"uid": str(trace.contributor_id)},
+    )
+    contributor_name = name_result.scalar_one_or_none()
+
     return TraceResponse(
         id=trace.id,
         status=trace.status,
@@ -202,6 +212,7 @@ async def get_trace(
         valid_from=trace.valid_from,
         valid_until=trace.valid_until,
         contributor_id=trace.contributor_id,
+        contributor_name=contributor_name,
         created_at=trace.created_at,
         updated_at=trace.updated_at,
     )
