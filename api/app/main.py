@@ -12,7 +12,7 @@ from app.logging_config import configure_logging
 from app.metrics import metrics_endpoint
 from app.middleware.logging_middleware import RequestLoggingMiddleware
 from app.middleware.body_limit import BodySizeLimitMiddleware
-from app.routers import admin, amendments, analytics, auth, moderation, reputation, search, tags, telemetry, traces, votes
+from app.routers import admin, amendments, analytics, auth, invitations, moderation, reputation, search, tags, telemetry, traces, votes
 from app.worker.consolidation_worker import consolidation_worker_loop
 from app.worker.embedding_worker import process_batch
 from app.services.embedding import EmbeddingService
@@ -94,6 +94,9 @@ app.include_router(auth.router)
 app.include_router(traces.router)
 app.include_router(votes.router)
 app.include_router(amendments.router)
+
+# Invitations router (contribution gate, spec §6.4)
+app.include_router(invitations.router)
 
 # Moderation router (02-04)
 app.include_router(moderation.router)
