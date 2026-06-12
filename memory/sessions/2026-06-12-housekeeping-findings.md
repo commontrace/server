@@ -20,15 +20,23 @@ Every `/api/v1/admin/*` endpoint in production returns 503 "Admin dashboard disa
 
 Early skill versions auto-submitted template traces with empty slots: context like "When working with , encountered: ..." and solution "Resolution involved changing <basenames>." Zero knowledge content; some leak old project directory paths from earlier servers into the public wiki.
 
-Found via 6 semantic searches — NOT exhaustive. Full audit needs admin trace listing (blocked on Finding 1) or title-pattern SQL.
+Expanded sweep 2026-06-12 (10 semantic searches total — still not exhaustive; full audit needs admin trace listing, blocked on Finding 1). All 12 below body-verified as zero-content: context "When working with [lang], encountered: ..." (empty slots) + solution "Resolution involved changing <basenames>", except the last which is a literal x/y ping test. Four leak old bitnami project paths in context_text.
 
-| ID | Title |
-|----|-------|
-| 2b41772d-53cc-49ac-af1a-28fdcb25223a | config discovery in config.runtime.php |
-| 1d0404b6-6508-42c1-b969-2c9d8b33280a | security hardening in AuthGate.tsx |
-| 81fb1df7-5f12-4085-9324-1c54816147bc | user correction in 002_seed.sql |
-| 9cee16aa-e559-40d4-bde7-c279532fc365 | user correction in base.html |
-| de90a3d6-5f4a-4178-af5f-d4f640fd980c | user correction in stop.py |
-| 2dd8c23f… (full id unresolved) | config discovery in package.json |
+| ID | Title | Leak |
+|----|-------|------|
+| 2b41772d-53cc-49ac-af1a-28fdcb25223a | config discovery in config.runtime.php | — |
+| 1d0404b6-6508-42c1-b969-2c9d8b33280a | security hardening in AuthGate.tsx | kasper-smc path |
+| 81fb1df7-5f12-4085-9324-1c54816147bc | user correction in 002_seed.sql | thepatchtc path |
+| 9cee16aa-e559-40d4-bde7-c279532fc365 | user correction in base.html | commontrace path |
+| de90a3d6-5f4a-4178-af5f-d4f640fd980c | user correction in stop.py | — |
+| 2dd8c23f-2039-419a-b903-967628854498 | config discovery in package.json | — |
+| ad1be8c0-1914-443d-8969-4d4051c1ee92 | user correction in user-logo.svg (typescript) | denemlabs path |
+| e6df9b96-2998-4721-bdd7-531b85964297 | user correction in brain.py (python) | — |
+| 8861b4d9-e5e2-4b17-9308-d88e664939a8 | user correction in apache-port.conf (javascript) | — |
+| f587e0a6-870a-4f70-b406-4424f4848673 | config discovery in railway.json | thepatchtc path |
+| aab93041-1000-4397-8712-978d81dff69e | config discovery in package.json (javascript) | — |
+| 394fedb6-708c-4ce0-8aaa-3115a15bba5a | ping (context "x", solution "y") | — |
+
+Separate finding, NOT in delete list: duplicate pair with identical titles and real content — a54a5e86-b33b-4410-9e3e-7b1be4babf8a and 19d26683-40cd-4898-89bb-e9811ca5ec60 ("FastMCP SSE returns 421 Invalid Host header…"). Dedup is its own decision.
 
 Recommendation: moderation-delete via `DELETE /api/v1/moderation/traces/{trace_id}` (live in prod, founder key is moderator) instead of retitling — these have no salvageable content. Destructive prod action: founder approval required. This supersedes the content-plan pre-publish "retitle vague titles" action for these husks.
