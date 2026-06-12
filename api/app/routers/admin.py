@@ -17,6 +17,7 @@ Endpoints:
   GET /api/v1/admin/funnel
   POST /api/v1/admin/invitations
   POST /api/v1/admin/contributors/{user_id}
+  DELETE /api/v1/admin/users/{user_id}
 """
 
 import hmac
@@ -29,6 +30,7 @@ from sqlalchemy import text
 from app.config import settings
 from app.dependencies import DbSession, hash_api_key
 from app.routers.invitations import generate_invite_code
+from app.services.pattern_synthesis import SYSTEM_USER_ID
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -417,3 +419,86 @@ async def admin_grant_contributor(
     await db.commit()
 
     return {"user_id": str(row[0]), "door": body.door, "invites_remaining": row[1]}
+
+
+@router.delete("/users/{user_id}")
+async def admin_delete_user(
+    user_id: str,
+    db: DbSession,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """Delete an account that never participated — probe/junk signups only.
+
+    Refuses (409) for moderators and for any user something still references:
+    traces, votes, amendments, domain reputation, invitations created or
+    redeemed, accounts they invited. Real participants are never deletable
+    this way.
+    """
+    _check_token(x_admin_token)
+
+    try:
+        uid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid user id")
+
+    if uid == SYSTEM_USER_ID:
+        raise HTTPException(
+            status_code=409, detail="System account cannot be deleted"
+        )
+
+    user_row = (
+        await db.execute(
+            text("SELECT is_moderator FROM users WHERE id = :uid"),
+            {"uid": uid},
+        )
+    ).first()
+    if user_row is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user_row[0]:
+        raise HTTPException(
+            status_code=409, detail="Moderator accounts cannot be deleted"
+        )
+
+    refs_row = (
+        await db.execute(
+            text(
+                "SELECT "
+                "(SELECT COUNT(*) FROM traces WHERE contributor_id = :uid), "
+                "(SELECT COUNT(*) FROM votes WHERE voter_id = :uid), "
+                "(SELECT COUNT(*) FROM amendments WHERE submitter_id = :uid), "
+                "(SELECT COUNT(*) FROM contributor_domain_reputation "
+                "  WHERE contributor_id = :uid), "
+                "(SELECT COUNT(*) FROM invitations WHERE created_by = :uid), "
+                "(SELECT COUNT(*) FROM invitations WHERE redeemed_by = :uid), "
+                "(SELECT COUNT(*) FROM users WHERE invited_by = :uid)"
+            ),
+            {"uid": uid},
+        )
+    ).fetchone()
+    labels = (
+        "traces",
+        "votes",
+        "amendments",
+        "domain_reputation",
+        "invitations_created",
+        "invitations_redeemed",
+        "invitees",
+    )
+    refs = {label: int(n) for label, n in zip(labels, refs_row) if int(n)}
+    if refs:
+        raise HTTPException(
+            status_code=409,
+            detail=f"User has activity and cannot be deleted: {refs}",
+        )
+
+    row = (
+        await db.execute(
+            text("DELETE FROM users WHERE id = :uid RETURNING id, email"),
+            {"uid": uid},
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.commit()
+
+    return {"deleted": str(row[0]), "email": row[1]}
