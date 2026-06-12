@@ -39,4 +39,17 @@ Expanded sweep 2026-06-12 (10 semantic searches total — still not exhaustive; 
 
 Separate finding, NOT in delete list: duplicate pair with identical titles and real content — a54a5e86-b33b-4410-9e3e-7b1be4babf8a and 19d26683-40cd-4898-89bb-e9811ca5ec60 ("FastMCP SSE returns 421 Invalid Host header…"). Dedup is its own decision.
 
+### Deletion attempt 2026-06-12: blocked
+
+Founder approved deleting all 12. All moderation DELETEs returned 403 "Moderator privileges required" — the dogfooding key in ~/.commontrace/config.json is NOT a moderator (earlier memory claim wrong). No admin endpoint flips is_moderator; needs direct DB UPDATE via Railway, and Railway CLI is logged out. Husk deletion now queued behind founder Railway access (same blocker as Finding 1).
+
+### Root cause — how husks got minted (skill repo archaeology)
+
+1. **Commit 212ca83 (2026-05-03), "feat(stop): auto-contribute by default, opt-in manual review"**: Stop hook gained direct POST to /api/v1/traces with `auto_contribute` config default TRUE. Payload uses `suggested_context_text` / `suggested_solution_text` VERBATIM — the structural template strings, no agent or human in the loop, no quality floor.
+2. **Template degenerates when journey data thin**: empty context fingerprint → "When working with , encountered: ..."; solution = "Resolution involved changing <3 basenames>." Titles from _build_title → "user correction in stop.py".
+3. **Path leak vector**: post_tool_use detect_bash_error captures output tail of failed bash; Claude Code harness appends "Shell cwd was reset to /home/bitnami/..." notices to tool output → that string became error_messages[0] → quoted into context_text → public wiki.
+4. **STILL LIVE in v0.5.2**: stop.py:943 `auto_mode = config.get("auto_contribute", True)`; verbatim-suggestion POST unchanged. Invitation gate now limits WHO can submit, but any gated contributor (founder included) can still mint husks today from a thin session crossing score 4.0.
+
+**Proposed fix (not yet shipped)**: husk guard in stop.py auto-submit path — refuse silent submission when suggested texts are degenerate (empty fingerprint slot, error text matching harness-noise patterns like "Shell cwd was reset", solution that is only a basename list); fall back to manual-review pending file instead. Plus filter harness-noise strings out of error capture in post_tool_use.
+
 Recommendation: moderation-delete via `DELETE /api/v1/moderation/traces/{trace_id}` (live in prod, founder key is moderator) instead of retitling — these have no salvageable content. Destructive prod action: founder approval required. This supersedes the content-plan pre-publish "retitle vague titles" action for these husks.
