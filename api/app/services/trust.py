@@ -98,15 +98,15 @@ async def apply_vote_to_trace(
 
     # Re-query to check promotion eligibility
     result = await db.execute(
-        select(Trace.status, Trace.confirmation_count, Trace.trust_score).where(
-            Trace.id == trace_id
-        )
+        select(
+            Trace.status, Trace.confirmation_count, Trace.trust_score, Trace.contributor_id
+        ).where(Trace.id == trace_id)
     )
     row = result.one_or_none()
     if row is None:
         return
 
-    status, confirmation_count, trust_score = row
+    status, confirmation_count, trust_score, contributor_id = row
 
     # Maturity-aware validation threshold — SEED tier needs fewer votes
     tier = await get_maturity_tier(db)
@@ -118,13 +118,28 @@ async def apply_vote_to_trace(
         and confirmation_count >= threshold
         and trust_score > 0
     ):
-        await db.execute(
+        promo = await db.execute(
             update(Trace)
-            .where(Trace.id == trace_id)
+            .where(Trace.id == trace_id, Trace.status == TraceStatus.pending)
             .values(status=TraceStatus.validated)
             .execution_options(synchronize_session=False)
         )
+        # Invite replenishment (spec §6.4): a confirmed-helpful contribution
+        # refills one invite, capped at MAX_INVITES. The status guard in the
+        # UPDATE makes promotion fire exactly once per trace, so concurrent
+        # votes cannot double-grant.
+        if promo.rowcount == 1 and contributor_id is not None:
+            await db.execute(
+                update(User)
+                .where(User.id == contributor_id, User.invites_remaining < MAX_INVITES)
+                .values(invites_remaining=User.invites_remaining + 1)
+                .execution_options(synchronize_session=False)
+            )
 
+
+# Replenishment cap (spec §6.4): confirmed-helpful contributions refill
+# invites up to this many, never beyond.
+MAX_INVITES = 3
 
 # Minimum weight for new contributors — creates measurable difference vs established
 # contributors per REPU-01 success criterion. An established contributor with

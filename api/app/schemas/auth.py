@@ -11,6 +11,7 @@ class APIKeyCreate(BaseModel):
 
     email: Optional[EmailStr] = None
     display_name: Optional[str] = Field(None, max_length=100)
+    invitation_code: Optional[str] = Field(None, min_length=8, max_length=128)
 
 
 class APIKeyResponse(BaseModel):
@@ -22,4 +23,5 @@ class APIKeyResponse(BaseModel):
 
     api_key: str
     user_id: uuid.UUID
+    can_contribute: bool = False
     message: str = "Store this key securely -- it cannot be retrieved again"

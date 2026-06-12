@@ -15,15 +15,20 @@ Endpoints:
   GET /api/v1/admin/traces/recent?limit=50
   GET /api/v1/admin/votes/recent?limit=100
   GET /api/v1/admin/funnel
+  POST /api/v1/admin/invitations
+  POST /api/v1/admin/contributors/{user_id}
 """
 
 import hmac
+import uuid
 
 from fastapi import APIRouter, Header, HTTPException, Query
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from app.config import settings
-from app.dependencies import DbSession
+from app.dependencies import DbSession, hash_api_key
+from app.routers.invitations import generate_invite_code
 
 router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
@@ -38,6 +43,16 @@ def _check_token(x_admin_token: str | None) -> None:
         x_admin_token, settings.admin_dashboard_token
     ):
         raise HTTPException(status_code=401, detail="Invalid admin token")
+
+
+class AdminInvitationMint(BaseModel):
+    count: int = Field(1, ge=1, le=100)
+    door: str = Field("founding", pattern="^(founding|vouched)$")
+    note: str | None = Field(None, max_length=255)
+
+
+class AdminContributorGrant(BaseModel):
+    door: str = Field("earned", pattern="^(earned|founding)$")
 
 
 @router.get("/health")
@@ -319,3 +334,86 @@ async def funnel(
             "amended": int(row[6]),
         }
     }
+
+
+@router.post("/invitations", status_code=201)
+async def admin_mint_invitations(
+    body: AdminInvitationMint,
+    db: DbSession,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """Mint founding/vouched invitation codes (admin only).
+
+    Codes are attributed to the oldest moderator account so lineage always
+    points at a real user. Raw codes are returned exactly once.
+    """
+    _check_token(x_admin_token)
+
+    row = (
+        await db.execute(
+            text(
+                "SELECT id FROM users WHERE is_moderator = true "
+                "ORDER BY created_at ASC LIMIT 1"
+            )
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(
+            status_code=409,
+            detail="No moderator account exists to attribute invitations to",
+        )
+    created_by = row[0]
+
+    codes = []
+    for _ in range(body.count):
+        raw_code = generate_invite_code()
+        await db.execute(
+            text(
+                "INSERT INTO invitations (id, code_hash, created_by, door, note) "
+                "VALUES (:id, :code_hash, :created_by, :door, :note)"
+            ),
+            {
+                "id": uuid.uuid4(),
+                "code_hash": hash_api_key(raw_code),
+                "created_by": created_by,
+                "door": body.door,
+                "note": body.note,
+            },
+        )
+        codes.append(raw_code)
+    await db.commit()
+
+    return {"codes": codes, "door": body.door, "count": len(codes)}
+
+
+@router.post("/contributors/{user_id}", status_code=200)
+async def admin_grant_contributor(
+    user_id: str,
+    body: AdminContributorGrant,
+    db: DbSession,
+    x_admin_token: str | None = Header(default=None),
+) -> dict:
+    """Grant contributor status directly — the earned door (Wanted Board
+    quest reviewed by a Keeper) or founding door for hand-picked contributors."""
+    _check_token(x_admin_token)
+
+    try:
+        uid = uuid.UUID(user_id)
+    except ValueError:
+        raise HTTPException(status_code=422, detail="Invalid user id")
+
+    row = (
+        await db.execute(
+            text(
+                "UPDATE users SET can_contribute = true, entry_door = :door, "
+                "invites_remaining = GREATEST(invites_remaining, 2) "
+                "WHERE id = :uid RETURNING id, invites_remaining"
+            ),
+            {"door": body.door, "uid": uid},
+        )
+    ).first()
+    if row is None:
+        raise HTTPException(status_code=404, detail="User not found")
+    await db.commit()
+
+    return {"user_id": str(row[0]), "door": body.door, "invites_remaining": row[1]}
