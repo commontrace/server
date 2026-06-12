@@ -13,6 +13,7 @@ Endpoints:
   GET /api/v1/analytics/geo
   GET /api/v1/analytics/platforms
   GET /api/v1/analytics/triggers
+  GET /api/v1/analytics/topics?limit=20
 """
 
 from datetime import datetime, timedelta, timezone
@@ -344,3 +345,44 @@ async def get_triggers(db: DbSession) -> dict:
         )
 
     return {"sessions_reported": sessions, "triggers": triggers}
+
+
+@router.get("/topics")
+async def get_topics(db: DbSession, limit: int = Query(20, ge=1, le=50)) -> dict:
+    """Ambient presence: per-tag activity counters, trailing 7 days (spec §4.4).
+
+    Aggregate-only — tag names and counts, nothing user-identifying.
+    """
+    since = _utcnow() - timedelta(days=7)
+
+    retrieval_sql = text(
+        "SELECT tg.name, COUNT(*) AS retrievals "
+        "FROM retrieval_logs rl "
+        "JOIN trace_tags tt ON tt.trace_id = rl.trace_id "
+        "JOIN tags tg ON tg.id = tt.tag_id "
+        "WHERE rl.retrieved_at >= :since "
+        "GROUP BY tg.name"
+    )
+    new_traces_sql = text(
+        "SELECT tg.name, COUNT(DISTINCT t.id) AS new_traces "
+        "FROM traces t "
+        "JOIN trace_tags tt ON tt.trace_id = t.id "
+        "JOIN tags tg ON tg.id = tt.tag_id "
+        "WHERE t.created_at >= :since "
+        "GROUP BY tg.name"
+    )
+    retrieval_rows = (await db.execute(retrieval_sql, {"since": since})).fetchall()
+    new_trace_rows = (await db.execute(new_traces_sql, {"since": since})).fetchall()
+    retrievals = {r[0]: int(r[1]) for r in retrieval_rows}
+    new_traces = {r[0]: int(r[1]) for r in new_trace_rows}
+
+    topics = [
+        {
+            "tag": tag,
+            "retrievals_7d": retrievals.get(tag, 0),
+            "new_traces_7d": new_traces.get(tag, 0),
+        }
+        for tag in set(retrievals) | set(new_traces)
+    ]
+    topics.sort(key=lambda x: (-x["retrievals_7d"], -x["new_traces_7d"], x["tag"]))
+    return {"window_days": 7, "topics": topics[:limit]}
