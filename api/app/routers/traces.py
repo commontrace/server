@@ -10,7 +10,7 @@ from fastapi import APIRouter, HTTPException
 from sqlalchemy import insert, select, text
 from sqlalchemy.orm import selectinload
 
-from app.dependencies import CurrentUser, DbSession, RequireEmail
+from app.dependencies import CurrentUser, DbSession, RequireContributor
 from app.middleware.rate_limiter import ReadRateLimit, WriteRateLimit
 from app.models.tag import Tag, trace_tags
 from app.models.trace import Trace
@@ -29,14 +29,14 @@ router = APIRouter(prefix="/api/v1", tags=["traces"])
 @router.post("/traces", response_model=TraceAccepted, status_code=202)
 async def submit_trace(
     body: TraceCreate,
-    user: RequireEmail,
+    user: RequireContributor,
     db: DbSession,
     _rate: WriteRateLimit,
 ) -> TraceAccepted:
     """Submit a new trace for community validation.
 
     Passes through three gates before database write:
-    1. Authentication (RequireEmail dependency — email required for contributions)
+    1. Authentication (RequireContributor dependency — invitation + email required, spec §6.4)
     2. Write rate limit (WriteRateLimit dependency)
     3. PII / secrets scan (scan_trace_submission)
 

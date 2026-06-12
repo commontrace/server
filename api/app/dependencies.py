@@ -86,6 +86,27 @@ async def require_email(user: User = Depends(get_current_user)) -> User:
 RequireEmail = Annotated[User, Depends(require_email)]
 
 
+async def require_contributor(user: User = Depends(require_email)) -> User:
+    """Gate: requires an invitation-granted contributor account (spec §6.4).
+
+    Chains require_email — publishing needs both a registered email and
+    can_contribute=true. Reading, search, and voting stay open to every
+    authenticated key; only publishing (traces, amendments) is gated.
+    """
+    if not user.can_contribute:
+        raise HTTPException(
+            status_code=403,
+            detail="Contribution requires an invitation. Reading and search remain "
+            "open to everyone, and your agent keeps capturing knowledge locally. "
+            "Redeem an invitation code via POST /api/v1/invitations/redeem "
+            "to unlock publishing.",
+        )
+    return user
+
+
+RequireContributor = Annotated[User, Depends(require_contributor)]
+
+
 async def require_moderator(user: User = Depends(get_current_user)) -> User:
     """Gate: requires authenticated user to have moderator privileges.
 
