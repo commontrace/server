@@ -29,6 +29,10 @@ router = APIRouter(prefix="/api/v1/telemetry", tags=["telemetry"])
 class TriggerStatsBody(BaseModel):
     session_id: str
     trigger_stats: dict
+    searches_fired: Optional[int] = Field(default=None, ge=0)
+    traces_consumed: Optional[int] = Field(default=None, ge=0)
+    resolutions_total: Optional[int] = Field(default=None, ge=0)
+    resolutions_assisted: Optional[int] = Field(default=None, ge=0)
 
 
 class TriggerStatsResponse(BaseModel):
@@ -46,6 +50,10 @@ async def report_trigger_stats(
     record = TriggerStats(
         session_id=body.session_id,
         stats_json=body.trigger_stats,
+        searches_fired=body.searches_fired,
+        traces_consumed=body.traces_consumed,
+        resolutions_total=body.resolutions_total,
+        resolutions_assisted=body.resolutions_assisted,
     )
     db.add(record)
     await db.commit()

@@ -14,6 +14,7 @@ Endpoints:
   GET /api/v1/analytics/platforms
   GET /api/v1/analytics/triggers
   GET /api/v1/analytics/topics?limit=20
+  GET /api/v1/analytics/assisted-resolution
 """
 
 from datetime import datetime, timedelta, timezone
@@ -386,3 +387,51 @@ async def get_topics(db: DbSession, limit: int = Query(20, ge=1, le=50)) -> dict
     ]
     topics.sort(key=lambda x: (-x["retrievals_7d"], -x["new_traces_7d"], x["tag"]))
     return {"window_days": 7, "topics": topics[:limit]}
+
+
+@router.get("/assisted-resolution")
+async def get_assisted_resolution(
+    db: DbSession,
+    days: int = Query(30, ge=1, le=365),
+) -> dict:
+    """Assisted-resolution north-star metric (spec §4.3).
+
+    Returns aggregate counters from trigger_stats rows that carry the
+    v0.5.2+ counters. Rows without counters (older skill versions) are
+    excluded from the rate calculation but counted separately.
+    """
+    since = _utcnow() - timedelta(days=days)
+    sql = text(
+        "SELECT "
+        "  COUNT(*) AS total_sessions, "
+        "  COUNT(searches_fired) AS sessions_with_counters, "
+        "  COALESCE(SUM(searches_fired), 0) AS searches_fired, "
+        "  COALESCE(SUM(traces_consumed), 0) AS traces_consumed, "
+        "  COALESCE(SUM(resolutions_total), 0) AS resolutions_total, "
+        "  COALESCE(SUM(resolutions_assisted), 0) AS resolutions_assisted "
+        "FROM trigger_stats "
+        "WHERE reported_at >= :since"
+    )
+    result = await db.execute(sql, {"since": since})
+    row = result.fetchone()
+    total_sessions = int(row[0] or 0)
+    sessions_with_counters = int(row[1] or 0)
+    searches_fired = int(row[2] or 0)
+    traces_consumed = int(row[3] or 0)
+    resolutions_total = int(row[4] or 0)
+    resolutions_assisted = int(row[5] or 0)
+
+    consumption_rate = (traces_consumed / searches_fired) if searches_fired > 0 else None
+    assisted_rate = (resolutions_assisted / resolutions_total) if resolutions_total > 0 else None
+
+    return {
+        "window_days": days,
+        "total_sessions": total_sessions,
+        "sessions_with_counters": sessions_with_counters,
+        "searches_fired": searches_fired,
+        "traces_consumed": traces_consumed,
+        "resolutions_total": resolutions_total,
+        "resolutions_assisted": resolutions_assisted,
+        "consumption_rate": round(consumption_rate, 3) if consumption_rate is not None else None,
+        "assisted_rate": round(assisted_rate, 3) if assisted_rate is not None else None,
+    }
