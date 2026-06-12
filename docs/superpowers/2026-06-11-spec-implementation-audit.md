@@ -111,3 +111,7 @@ All remediation commits are **local only — nothing pushed**, per standing rule
 - **skill** main: `06ec4cf..0568477` (v0.5.0 → v0.5.2, 8 commits, 104/104 tests)
 
 Production today still runs pre-gate code (open registration). The gate goes live when these are pushed — **founder confirmation required**.
+
+---
+
+**Addendum 2026-06-12 — DEPLOYED.** Founder confirmed ("go"). Pushed: server `1079575..33448c6`, mcp `71b6d3e..76d6ae3`, skill `06ec4cf..0568477`. Railway deploy verified live ~110s after push: `/api/v1/analytics/topics` and `/api/v1/analytics/assisted-resolution` return 200 with production data (303 sessions/30d, 0 with counters until v0.5.2 clients report; rates `null` — None-safe path confirmed in prod); registration returns `can_contribute: false`; uninvited trace POST blocked 403 (email gate fires first by design; invitation funnel-saver verified e2e on identical code). Migration 0020 backfill protected existing contributors (founding door, 2 invites). One probe account created during verification (`6e7ab311…`, no email) — same harmless class as `94f7656a…`; both deletable via admin.
