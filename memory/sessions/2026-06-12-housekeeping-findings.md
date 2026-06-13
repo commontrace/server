@@ -39,9 +39,11 @@ Expanded sweep 2026-06-12 (10 semantic searches total — still not exhaustive; 
 
 Separate finding, NOT in delete list: duplicate pair with identical titles and real content — a54a5e86-b33b-4410-9e3e-7b1be4babf8a and 19d26683-40cd-4898-89bb-e9811ca5ec60 ("FastMCP SSE returns 421 Invalid Host header…"). Dedup is its own decision.
 
-### Deletion attempt 2026-06-12: blocked
+### RESOLVED 2026-06-12 — all 12 husks deleted
 
-Founder approved deleting all 12. All moderation DELETEs returned 403 "Moderator privileges required" — the dogfooding key in ~/.commontrace/config.json is NOT a moderator (earlier memory claim wrong). No admin endpoint flips is_moderator; needs direct DB UPDATE via Railway, and Railway CLI is logged out. Husk deletion now queued behind founder Railway access (same blocker as Finding 1).
+Sequence: (1) founder ran `railway login` out-of-band; CLI authed as DENEM Labs. (2) Set `ADMIN_DASHBOARD_TOKEN` (openssl rand -hex 32) on api service via `railway variables --set` → admin router live. (3) 2 junk accounts deleted via `DELETE /api/v1/admin/users/{id}` — both 200. (4) Flipped founder `is_moderator=true` via `railway ssh -s pgvector` → psql (DB is private-network only, no TCP proxy; base64-piped SQL to dodge railway arg-join quoting). (5) First husk-delete pass: 500 on all 12 — moderation handler only cleared votes/amendments/trace_tags, but traces also FK from retrieval_logs / rif_shadows / trace_relationships → ForeignKeyViolation. (6) Fixed handler (commit 1070fc5, pushed — Railway redeploy), then 12 deletes via `DELETE /api/v1/moderation/traces/{id}` all succeeded. Verified: sampled IDs 404, real FastMCP dup pair (a54a5e86 / 19d26683) untouched.
+
+Mechanism note: `railway ssh -s <svc> <cmd...>` space-joins argv into the remote command line (no implicit `sh -c` wrapper that survives) — pass pipelines as escaped argv (`echo $B64 \| base64 -d \| psql ...`), keep any spaced payload inside the base64 blob. `railway connect` / interactive `railway login` need a TTY (fail under the `!`-prefix non-interactive shell).
 
 ### Root cause — how husks got minted (skill repo archaeology)
 
