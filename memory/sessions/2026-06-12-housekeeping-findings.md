@@ -55,3 +55,25 @@ Mechanism note: `railway ssh -s <svc> <cmd...>` space-joins argv into the remote
 **Proposed fix (not yet shipped)**: husk guard in stop.py auto-submit path — refuse silent submission when suggested texts are degenerate (empty fingerprint slot, error text matching harness-noise patterns like "Shell cwd was reset", solution that is only a basename list); fall back to manual-review pending file instead. Plus filter harness-noise strings out of error capture in post_tool_use.
 
 Recommendation: moderation-delete via `DELETE /api/v1/moderation/traces/{trace_id}` (live in prod, founder key is moderator) instead of retitling — these have no salvageable content. Destructive prod action: founder approval required. This supersedes the content-plan pre-publish "retitle vague titles" action for these husks.
+
+### FULL SWEEP 2026-06-12 — exhaustive body-classification, 49 more husks deleted (86% of wiki)
+
+The 12 above were found by semantic search (non-exhaustive). With the admin router live (`GET /admin/traces/recent`) the sweep went exhaustive, then classification moved from **title-shape regex** to **body content** — the authoritative signal. Husk signature, SQL:
+
+```
+context_text LIKE 'When working with%encountered%'   -- degenerate template, empty slots
+OR solution_text LIKE 'Resolution involved changing%' -- basename-list "solution"
+OR length(context_text) < 5                           -- the x/y ping
+```
+
+Result on the post-12-delete corpus: **49 of 57 traces (86%) were husks, all `retrieval_count 0`**, span 2026-05-03 → present. Body classification caught 49 vs title-regex's 46 — 2 husks wore real-looking titles, 1 fresh husk minted *mid-sweep* (count ticked 48→49 between two queries: the v0.5.2 `auto_contribute` faucet is still live and actively minting).
+
+8 real survivors, all genuine prose + non-trivial retrieval: Beehiiv/Ghost (rc0, new), Railway Nixpacks EBUSY (rc37), Claude OAuth sharing (rc62), `gh api` POST switch (rc31), gh-CLI port (rc67), Stripe metadata mismatch (rc129), FastMCP 421 dup pair (a54a5e86 rc494 / 19d26683 rc159).
+
+Deletion (founder approved "Delete all 49 now"): looped `DELETE /api/v1/moderation/traces/{id}`. First pass 22 deleted then `WriteRateLimit` 429'd the rest — retried remainder with 6s backoff-on-429 + 2s inter-delete pacing, all cleared. **Final DB state: 0 husks, 8 traces.** Wiki now 100% real content.
+
+**Faucet fix BUILT (committed `c44dac8`, NOT pushed).** Skill v0.5.3, `/tmp/ct-skill`. Two defenses against the 212ca83 auto_contribute root cause:
+1. `redact.strip_harness_noise` / `contains_harness_noise` (new) — `detect_bash_error` scrubs agent-runtime noise lines ("Shell cwd was reset to /home/…", `<system-reminder>`, CommonTrace injection) from bash error capture before storage/signature/publish. Closes the path-leak vector at source.
+2. `stop._is_husk` (new) — quality floor on auto-submit. Empty / bare-template (`When working with…encountered:` / `Resolution involved changing…`) / noise-tainted candidates no longer silently POST; fall through to existing manual-review pending file. Rich captures still auto-submit.
+
+Tests: `tests/test_husk_guard.py` 15 cases; full suite 119/119 green. `auto_contribute` default left TRUE (founder's product decision) — guard makes it safe rather than reverting it. **Push gated on founder confirmation** (Railway/users auto-pull on push). Until pushed, deployed v0.5.2 faucet is still live and husks can regrow.
