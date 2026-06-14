@@ -12,6 +12,9 @@ venv/
 .env
 !.env.example
 
+# Ops secrets (filled locally, pushed to Railway by ops/scripts/set-secrets.sh)
+ops/.secrets.env
+
 # IDE
 .idea/
 .vscode/

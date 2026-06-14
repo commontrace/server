@@ -22,12 +22,12 @@ Both should run automatically, weekly, **orchestrated by Railway cron**, with an
 
 | Decision | Choice |
 |----------|--------|
-| Audit/review engine | **Claude-powered (LLM)** via Anthropic Messages API |
-| Model | **Claude Sonnet 4.6** (`claude-sonnet-4-6`) — judgment + cheap |
+| Audit/review engine | **OpenAI (LLM)** via Chat Completions API |
+| Model | **`gpt-5.5`** (override via `CT_MODEL`) — judgment + cheap |
 | Orchestration host | **Railway cron** (two services) |
 | Audit scope | **All 4 repos**: server, mcp, frontend, skill |
 | Job B scope | **pending traces + flagged traces + amendments + open PRs** (PRs are the priority) |
-| Job B action | **Triage digest** — Claude recommends, human decides (no auto-mutation) |
+| Job B action | **Triage digest** — model recommends, human decides (no auto-mutation) |
 | Reminder cadence | **Weekly, folded into the review digest** (one email, one cadence) |
 | Email transport | **Resend** (verified domain `denemlabs.com`) |
 | Report destination | Job A → **GitHub issue** in commontrace/server; Job B → **email digest** |
@@ -35,7 +35,12 @@ Both should run automatically, weekly, **orchestrated by Railway cron**, with an
 
 > **Ethos note:** the product forbids LLM calls (structural intelligence only).
 > That rule governs the *product*. This is *ops tooling*, not product — LLM use
-> here is a deliberate, scoped exception.
+> here is a deliberate, scoped exception. OpenAI is already a sanctioned
+> dependency in the stack (used for embeddings), so the engine adds no new vendor.
+
+> **Secret handling:** `OPENAI_API_KEY` lives ONLY as a Railway env secret (and
+> an untracked local `.env` for testing). Never committed, never in chat. The key
+> first shared in chat must be rotated before use.
 
 ## Architecture
 
@@ -46,13 +51,13 @@ Railway monorepo pattern.
 ```
 ops/
   Dockerfile                      # one image, both entrypoints
-  pyproject.toml                  # httpx, anthropic, asyncpg, sqlalchemy, pytest
+  pyproject.toml                  # httpx, openai, asyncpg, sqlalchemy, pytest
   railway.audit.toml              # cron "0 8 * * 1",  start = python -m commontrace_ops.oss_audit
   railway.review.toml             # cron "0 9 * * 1",  start = python -m commontrace_ops.contrib_review
   src/commontrace_ops/
     common/
       config.py       # env loading + validation (fail fast on missing secret)
-      llm.py          # Anthropic Messages API wrapper (Claude Sonnet 4.6)
+      llm.py          # OpenAI Chat Completions wrapper (gpt-5.5, model via CT_MODEL)
       github.py       # GitHub REST via httpx: community profile, repo meta, PRs, issues, CI runs
       db.py           # READ-ONLY asyncpg to CommonTrace Postgres (Job B only)
       emailer.py      # Resend HTTP wrapper
@@ -77,13 +82,13 @@ ops/
 ### Configuration (Railway env)
 
 Shared:
-- `ANTHROPIC_API_KEY`
+- `OPENAI_API_KEY` — **rotate the chat-exposed key first**; set only in Railway
 - `GITHUB_TOKEN` — fine-grained PAT, scoped to the 4 repos: contents:read,
   metadata:read, pull_requests:read, **issues:write** (for Job A issue filing)
 - `RESEND_API_KEY`
 - `ALERT_EMAIL_FROM=alerts@denemlabs.com`
 - `ALERT_EMAIL_TO=tools@denemlabs.com`
-- `CT_MODEL=claude-sonnet-4-6` (override knob)
+- `CT_MODEL=gpt-5.5` (override knob)
 - `REPOS=commontrace/server,commontrace/mcp,commontrace/frontend,commontrace/skill`
 
 Job B only:
@@ -108,7 +113,7 @@ missing.
    - issues/PRs: open counts + age of oldest
    - releases: latest tag + cadence (gap between last releases)
    - activity: last push timestamp
-2. Pack facts → JSON. Single Claude call with an **OSS-health rubric** system
+2. Pack facts → JSON. Single OpenAI call with an **OSS-health rubric** system
    prompt → returns: overall grade, per-repo assessment, and a **prioritized
    list of improvement suggestions** (most-impactful first).
 3. Render markdown report. **File or update** a GitHub issue in
@@ -135,7 +140,7 @@ activity. Suggestions are derived from the lowest-scoring dimensions.
      categories (from `metadata_json`)
    - amendments: id, original_trace_id, submitter, created_at, age,
      improved_solution + explanation
-3. Single Claude call → triage each item:
+3. Single OpenAI call → triage each item:
    - PRs: recommend **merge / review-needed / close**, with one-line reason
    - traces & amendments: **keep / reject / needs-work**, with reason
    - rank by age + severity; surface the aging/pending list as the reminder
@@ -167,7 +172,7 @@ fires even if Resend itself is the thing that's down.
 - **Missing secret** → fail fast at startup, routed through alerting.
 - **GitHub rate limit / 5xx** → bounded retry with backoff in `github.py`; if
   still failing, raise → failure email.
-- **Anthropic API error** → raise → failure email (no partial report filed).
+- **OpenAI API error** → raise → failure email (no partial report filed).
 - **DB unreachable (Job B)** → raise → failure email.
 - **Empty queues (Job B)** → still send a digest ("nothing pending") so the
   weekly heartbeat confirms the job ran.
@@ -185,7 +190,7 @@ is **deferred** unless the coupling bites.
 
 ## Testing
 
-- Unit tests with mocked GitHub / Anthropic / Resend / DB — no live calls in CI.
+- Unit tests with mocked GitHub / OpenAI / Resend / DB — no live calls in CI.
 - `--dry-run` flag on both entrypoints: gather + build prompt + render, but
   print to stdout instead of emailing / filing. Used for local runs and a CI
   smoke test.
@@ -202,5 +207,5 @@ is **deferred** unless the coupling bites.
 
 ## Cost
 
-Sonnet 4.6, ~a handful of calls/week across both jobs → pennies/week. Railway:
+`gpt-5.5`, ~a handful of calls/week across both jobs → pennies/week. Railway:
 two cron services, near-zero idle cost (containers run only on schedule).
