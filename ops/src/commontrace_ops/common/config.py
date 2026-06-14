@@ -20,6 +20,7 @@ class Config:
     model: str
     database_url: str | None
     audit_issue_repo: str | None
+    discord_webhook_url: str | None = None
 
 
 REQUIRED = [
@@ -68,4 +69,5 @@ def load_config(
         model=env.get("CT_MODEL", "gpt-5.5"),
         database_url=_normalize_db_url(db_url) if db_url else None,
         audit_issue_repo=env.get("AUDIT_ISSUE_REPO"),
+        discord_webhook_url=env.get("DISCORD_WEBHOOK_URL"),
     )
