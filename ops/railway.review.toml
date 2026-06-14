@@ -1,0 +1,8 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "python -m commontrace_ops.contrib_review"
+restartPolicyType = "NEVER"
+cronSchedule = "0 9 * * 1"

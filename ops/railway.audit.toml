@@ -1,0 +1,8 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+startCommand = "python -m commontrace_ops.oss_audit"
+restartPolicyType = "NEVER"
+cronSchedule = "0 8 * * 1"
