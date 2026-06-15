@@ -118,3 +118,4 @@ it is a persistent cluster key, and you should know it exists.
 | PII/secret scan at submission | `api/app/services/scanner.py` |
 | Email confined to admin | `api/app/routers/admin.py` (admin-token gated) |
 | Anonymized telemetry | `api/app/routers/telemetry.py` |
+| Anonymized savings telemetry + owner-only impact | `api/app/routers/telemetry.py` (`report_savings`), `api/app/routers/analytics.py` (`get_savings`, `get_outbound_impact`) |
