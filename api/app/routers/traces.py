@@ -18,7 +18,7 @@ from app.schemas.trace import TraceAccepted, TraceCreate, TraceResponse
 
 from app.services.context import build_context_fingerprint
 from app.services.decay import compute_half_life
-from app.services.enrichment import auto_enrich_metadata, compute_depth_score, compute_impact_level, compute_somatic_intensity
+from app.services.enrichment import auto_enrich_metadata, coerce_tokens_to_resolution, compute_depth_score, compute_impact_level, compute_somatic_intensity
 from app.services.scanner import SecretDetectedError, scan_trace_submission
 from app.services.staleness import check_trace_staleness
 from app.services.tags import normalize_tag, validate_tag
@@ -95,7 +95,8 @@ async def submit_trace(
 
     # Enrich metadata with auto-detected language/framework, compute depth and decay rate
     tag_names = [normalize_tag(t) for t in body.tags if validate_tag(normalize_tag(t))]
-    enriched = auto_enrich_metadata(body.metadata_json, body.solution_text)
+    base_meta = coerce_tokens_to_resolution(body.metadata_json, body.tokens_to_resolution)
+    enriched = auto_enrich_metadata(base_meta, body.solution_text)
     trace.metadata_json = enriched
     trace.depth_score = compute_depth_score(enriched, body.solution_text)
     trace.somatic_intensity = compute_somatic_intensity(enriched)
