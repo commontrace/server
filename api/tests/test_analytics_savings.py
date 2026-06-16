@@ -19,9 +19,10 @@ async def test_returns_global_minutes_tokens_events():
     out = await get_savings(db=db)
 
     assert out == {
-        "minutes_saved": 540,
-        "tokens_saved": 128_000,
-        "events": 37,
+        "total_minutes_saved": 540,
+        "total_tokens_saved": 128_000,
+        "total_usd_saved": 0.64,  # 128_000 / 1e6 * 5.00
+        "event_count": 37,
     }
 
 
@@ -34,4 +35,9 @@ async def test_empty_ledger_returns_zeros():
 
     out = await get_savings(db=db)
 
-    assert out == {"minutes_saved": 0, "tokens_saved": 0, "events": 0}
+    assert out == {
+        "total_minutes_saved": 0,
+        "total_tokens_saved": 0,
+        "total_usd_saved": 0.0,
+        "event_count": 0,
+    }

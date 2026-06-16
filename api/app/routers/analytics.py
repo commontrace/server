@@ -33,6 +33,7 @@ from app.dependencies import CurrentUser
 from app.middleware.rate_limiter import ReadRateLimit
 from app.schemas.savings import OutboundImpactResponse
 from app.services.outbound_impact import compute_outbound_impact
+from app.config import settings
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 
@@ -458,10 +459,12 @@ async def get_savings(db: DbSession) -> dict:
     count_result = await db.execute(
         select(func.count()).select_from(SavingsLedger)
     )
+    tokens = int(tokens_result.scalar() or 0)
     return {
-        "minutes_saved": int(minutes_result.scalar() or 0),
-        "tokens_saved": int(tokens_result.scalar() or 0),
-        "events": int(count_result.scalar() or 0),
+        "total_minutes_saved": int(minutes_result.scalar() or 0),
+        "total_tokens_saved": tokens,
+        "total_usd_saved": round(tokens / 1_000_000 * settings.savings_price_per_mtok, 2),
+        "event_count": int(count_result.scalar() or 0),
     }
 
 
