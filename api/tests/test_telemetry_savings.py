@@ -41,3 +41,20 @@ def test_request_schema_rejects_smuggled_identity_fields():
             minutes_saved=1, tokens_saved=10, event_type="measured_recurrence",
             contributor_id="00000000-0000-0000-0000-000000000000",
         )
+
+
+def test_event_type_allowlist_valid():
+    """Known-good event types must construct without error."""
+    from pydantic import ValidationError
+    import pytest
+    for good in ("measured_recurrence", "proxy_consumption"):
+        obj = SavingsIngest(minutes_saved=1, tokens_saved=10, event_type=good)
+        assert obj.event_type == good
+
+
+def test_event_type_allowlist_rejects_arbitrary_string():
+    """Arbitrary strings must be rejected — allowlist was dead code before this fix."""
+    import pytest
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        SavingsIngest(minutes_saved=1, tokens_saved=10, event_type="bogus")
