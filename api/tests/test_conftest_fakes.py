@@ -25,3 +25,28 @@ def test_make_user_has_id_and_no_secrets_leaked():
     u = make_user()
     assert isinstance(u.id, uuid.UUID)
     assert u.can_contribute is True
+
+
+from datetime import datetime as _dt
+from tests.conftest import make_trace
+
+
+def test_make_trace_defaults():
+    t = make_trace()
+    assert t.somatic_intensity == 0.9
+    assert t.impact_level == "normal"
+    assert t.trace_type == "episodic"
+    assert t.tags == []
+    assert isinstance(t.created_at, _dt)
+    assert len(t.embedding) == 1536
+
+
+def test_make_trace_overrides():
+    t = make_trace(title="x", somatic_intensity=0.5)
+    assert t.title == "x"
+    assert t.somatic_intensity == 0.5
+
+
+def test_fakeresult_scalars_chains():
+    r = FakeResult(rows=[1, 2, 3])
+    assert r.scalars().all() == [1, 2, 3]
