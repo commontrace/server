@@ -523,6 +523,14 @@ async def search_traces(
     if len(results) >= 3 and _trace_embeddings:
         results = apply_diversity_sampling(results, _trace_embeddings)
 
+    # Step G.6: Somatic-intensity floor — always surface hardest-won knowledge
+    # even when cosine ANN did not rank it in. Semantic path only; best-effort.
+    if query_vector is not None:
+        results = await _apply_somatic_floor(
+            db, results, searcher_fp=searcher_fp, now_utc=now_utc,
+            include_expired=include_expired, normalized_tags=normalized_tags,
+        )
+
     # Fire-and-forget: record retrievals + co-retrieval patterns
     # Tasks are tracked in _background_tasks set to prevent GC before completion
     if results:
