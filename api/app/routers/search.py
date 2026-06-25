@@ -194,6 +194,28 @@ async def _apply_spreading_activation(
     return results[:limit]
 
 
+def _serialize_trace(trace, *, similarity: float, combined: float) -> TraceSearchResult:
+    """Build a TraceSearchResult from a whole Trace ORM object.
+
+    Mirrors the inline construction used elsewhere in this router so the
+    somatic-floor path emits identical result shapes.
+    """
+    return TraceSearchResult(
+        id=trace.id, title=trace.title, context_text=trace.context_text,
+        solution_text=trace.solution_text, trust_score=trace.trust_score,
+        status=trace.status, tags=[tag.name for tag in trace.tags],
+        similarity_score=similarity, combined_score=combined,
+        contributor_id=trace.contributor_id, created_at=trace.created_at,
+        retrieval_count=trace.retrieval_count, depth_score=trace.depth_score,
+        somatic_intensity=trace.somatic_intensity,
+        impact_level=getattr(trace, 'impact_level', 'normal') or 'normal',
+        trace_type=trace.trace_type, context_fingerprint=trace.context_fingerprint,
+        convergence_level=trace.convergence_level,
+        memory_temperature=trace.memory_temperature,
+        valid_from=trace.valid_from, valid_until=trace.valid_until,
+    )
+
+
 @router.post("/traces/search", response_model=TraceSearchResponse)
 async def search_traces(
     body: TraceSearchRequest,
