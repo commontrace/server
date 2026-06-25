@@ -221,6 +221,22 @@ def compute_impact_level(metadata: Optional[dict], tags: list[str]) -> str:
     return "normal"
 
 
+def coerce_tokens_to_resolution(
+    metadata: Optional[dict], top_level: Optional[int]
+) -> dict:
+    """Fold a measured tokens_to_resolution count into the metadata dict.
+
+    The skill may send the count as a top-level body field or already nested
+    in metadata_json. A top-level value (when present) takes precedence so the
+    contributor's real measured token count rides with the trace. Returns a new
+    dict; never mutates the input.
+    """
+    meta = dict(metadata) if metadata else {}
+    if top_level is not None:
+        meta["tokens_to_resolution"] = top_level
+    return meta
+
+
 def auto_enrich_metadata(metadata: Optional[dict], solution_text: str) -> dict:
     """Auto-detect language, framework, and versions from solution text.
 

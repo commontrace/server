@@ -17,6 +17,11 @@ from app.dependencies import CurrentUser, DbSession
 from app.middleware.rate_limiter import WriteRateLimit
 from app.models.trigger_stats import TriggerStats
 from app.models.user import User
+from app.schemas.savings import (
+    SavingsIngest,
+    SavingsIngestResponse,
+    build_ledger_row,
+)
 
 router = APIRouter(prefix="/api/v1/telemetry", tags=["telemetry"])
 
@@ -132,3 +137,27 @@ async def ping(
     )
     await db.execute(stmt)
     await db.commit()
+
+
+# ---------------------------------------------------------------------------
+# Savings ledger (anonymized increments — Savings & Impact, spec phase 4)
+# ---------------------------------------------------------------------------
+
+
+@router.post("/savings", response_model=SavingsIngestResponse, status_code=201)
+async def report_savings(
+    body: SavingsIngest,
+    user: CurrentUser,
+    db: DbSession,
+    _rate: WriteRateLimit,
+) -> SavingsIngestResponse:
+    """Accept one anonymized savings increment from a skill client.
+
+    Authenticated by API key for rate-limiting only — the user is NEVER
+    written to the row. Persists exactly (minutes_saved, tokens_saved,
+    event_type); no identity, no trace linkage, no content. Mirrors the
+    anonymized-telemetry envelope of report_trigger_stats.
+    """
+    db.add(build_ledger_row(body))
+    await db.commit()
+    return SavingsIngestResponse()

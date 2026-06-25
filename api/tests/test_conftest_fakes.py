@@ -1,0 +1,27 @@
+"""Self-test for the no-DB fake session harness."""
+import uuid
+from tests.conftest import FakeDbSession, FakeResult, make_user
+
+
+async def test_fake_result_scalar_and_fetchone():
+    res = FakeResult(scalar_value=7, rows=[(1, 2, 3)])
+    assert res.scalar() == 7
+    assert res.scalar_one() == 7
+    assert res.fetchone() == (1, 2, 3)
+
+
+async def test_fake_session_records_added_objects_and_commits():
+    db = FakeDbSession(results=[FakeResult(scalar_value=0)])
+    sentinel = object()
+    db.add(sentinel)
+    await db.execute("SELECT 1")
+    await db.commit()
+    assert db.added == [sentinel]
+    assert db.commits == 1
+    assert db.executed[0][0] == "SELECT 1"
+
+
+def test_make_user_has_id_and_no_secrets_leaked():
+    u = make_user()
+    assert isinstance(u.id, uuid.UUID)
+    assert u.can_contribute is True

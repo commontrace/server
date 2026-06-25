@@ -3,7 +3,7 @@ from contextlib import asynccontextmanager
 
 import redis.asyncio as aioredis
 import structlog
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 
@@ -51,14 +51,16 @@ async def lifespan(app: FastAPI):
         settings.redis_url, encoding="utf-8", decode_responses=True
     )
 
-    # Start background workers
-    worker_task = asyncio.create_task(_embedding_worker_loop())
-    consolidation_task = asyncio.create_task(consolidation_worker_loop())
+    # Start background workers — stored on app.state so /health can inspect
+    # their liveness (informational only; a dead worker is not a fatal health
+    # state, see health_check).
+    app.state.embedding_worker_task = asyncio.create_task(_embedding_worker_loop())
+    app.state.consolidation_worker_task = asyncio.create_task(consolidation_worker_loop())
     try:
         yield
     finally:
-        worker_task.cancel()
-        consolidation_task.cancel()
+        app.state.embedding_worker_task.cancel()
+        app.state.consolidation_worker_task.cancel()
         # Shutdown: close Redis connection
         await app.state.redis.aclose()
 
@@ -124,6 +126,59 @@ if settings.debug:
     app.get("/metrics")(metrics_endpoint)
 
 
+def _worker_status(task) -> str:
+    """Liveness of a background worker task. Informational only — never fatal."""
+    if task is None:
+        return "unknown"
+    return "stopped" if task.done() else "running"
+
+
 @app.get("/health")
-async def health_check():
-    return {"status": "ok"}
+async def health_check(response: Response):
+    """Readiness probe.
+
+    Core dependencies (Postgres, Redis) are gating: if either is unreachable the
+    service cannot serve traffic, so we return 503. Background workers are
+    reported for visibility but are NOT gating — a stuck/dead worker shouldn't
+    flip the pod unhealthy and trigger a restart loop that wouldn't fix it.
+
+    Error details are logged server-side only; the response never leaks internal
+    error strings to the client.
+    """
+    checks: dict[str, str] = {}
+    healthy = True
+
+    # Core dependency: Postgres
+    try:
+        from sqlalchemy import text
+
+        from app.database import async_session_factory
+
+        async with async_session_factory() as db:
+            await db.execute(text("SELECT 1"))
+        checks["database"] = "ok"
+    except Exception as exc:
+        log.error("health_check_database_failed", error=str(exc))
+        checks["database"] = "error"
+        healthy = False
+
+    # Core dependency: Redis
+    try:
+        await app.state.redis.ping()
+        checks["redis"] = "ok"
+    except Exception as exc:
+        log.error("health_check_redis_failed", error=str(exc))
+        checks["redis"] = "error"
+        healthy = False
+
+    # Background workers — informational, not gating.
+    checks["embedding_worker"] = _worker_status(
+        getattr(app.state, "embedding_worker_task", None)
+    )
+    checks["consolidation_worker"] = _worker_status(
+        getattr(app.state, "consolidation_worker_task", None)
+    )
+
+    if not healthy:
+        response.status_code = 503
+    return {"status": "ok" if healthy else "degraded", "checks": checks}

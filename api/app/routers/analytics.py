@@ -28,6 +28,12 @@ from app.models.retrieval_log import RetrievalLog
 from app.models.trace import Trace
 from app.models.user import User
 from app.models.vote import Vote
+from app.models.savings_ledger import SavingsLedger
+from app.dependencies import CurrentUser
+from app.middleware.rate_limiter import ReadRateLimit
+from app.schemas.savings import OutboundImpactResponse
+from app.services.outbound_impact import compute_outbound_impact
+from app.config import settings
 
 router = APIRouter(prefix="/api/v1/analytics", tags=["analytics"])
 
@@ -435,3 +441,47 @@ async def get_assisted_resolution(
         "consumption_rate": round(consumption_rate, 3) if consumption_rate is not None else None,
         "assisted_rate": round(assisted_rate, 3) if assisted_rate is not None else None,
     }
+
+
+@router.get("/savings")
+async def get_savings(db: DbSession) -> dict:
+    """Global savings totals for the frontend counter (Savings & Impact).
+
+    Aggregate-only, unauthenticated — sums anonymized ledger rows. No identity
+    or content is touched; the rows have none.
+    """
+    minutes_result = await db.execute(
+        select(func.coalesce(func.sum(SavingsLedger.minutes_saved), 0))
+    )
+    tokens_result = await db.execute(
+        select(func.coalesce(func.sum(SavingsLedger.tokens_saved), 0))
+    )
+    count_result = await db.execute(
+        select(func.count()).select_from(SavingsLedger)
+    )
+    tokens = int(tokens_result.scalar() or 0)
+    return {
+        "total_minutes_saved": int(minutes_result.scalar() or 0),
+        "total_tokens_saved": tokens,
+        "total_usd_saved": round(tokens / 1_000_000 * settings.savings_price_per_mtok, 2),
+        "event_count": int(count_result.scalar() or 0),
+    }
+
+
+@router.get("/impact/outbound", response_model=OutboundImpactResponse)
+async def get_outbound_impact(
+    user: CurrentUser,
+    db: DbSession,
+    _rate: ReadRateLimit,
+) -> OutboundImpactResponse:
+    """What the authenticated caller's OWN traces saved everyone else.
+
+    Owner-scoped: the contributor_id is taken from the authenticated user —
+    a caller can never query another user's outbound impact.
+    """
+    data = await compute_outbound_impact(db, user.id)
+    return OutboundImpactResponse(
+        tokens_saved_for_others=data["tokens_saved_for_others"],
+        minutes_saved_for_others=data["minutes_saved_for_others"],
+        trace_count=data["trace_count"],
+    )

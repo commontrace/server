@@ -26,5 +26,10 @@ class Settings(BaseSettings):
     consolidation_interval_hours: int = 24
     consolidation_stale_age_days: int = 180
 
+    # Savings & Impact — USD per 1M tokens. Single published price constant;
+    # the skill's DEFAULT_PRICE_PER_MTOK mirrors this value. Override via
+    # the SAVINGS_PRICE_PER_MTOK env var.
+    savings_price_per_mtok: float = 5.0
+
 
 settings = Settings()

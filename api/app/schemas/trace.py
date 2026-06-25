@@ -21,6 +21,7 @@ class TraceCreate(BaseModel):
     supersedes_trace_id: Optional[uuid.UUID] = None
     review_after: Optional[datetime] = None
     watch_condition: Optional[str] = Field(None, max_length=500)
+    tokens_to_resolution: Optional[int] = Field(default=None, ge=0, le=50_000_000)
 
     @model_validator(mode="after")
     def validate_metadata_size(self):
