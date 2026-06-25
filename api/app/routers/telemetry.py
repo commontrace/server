@@ -17,6 +17,7 @@ from app.dependencies import CurrentUser, DbSession
 from app.middleware.rate_limiter import WriteRateLimit
 from app.models.trigger_stats import TriggerStats
 from app.models.user import User
+from app.services.geoip import country_from_request
 from app.schemas.savings import (
     SavingsIngest,
     SavingsIngestResponse,
@@ -76,15 +77,6 @@ class InstallBody(BaseModel):
     install_source: Optional[str] = Field(default=None, max_length=50)
 
 
-def _country_from_request(request: Request) -> Optional[str]:
-    """Extract 2-letter country code from common CDN headers."""
-    for header in ("CF-IPCountry", "X-Vercel-IP-Country", "X-Country-Code"):
-        val = request.headers.get(header)
-        if val and len(val) == 2 and val.isalpha():
-            return val.upper()
-    return None
-
-
 @router.post("/install", status_code=201)
 async def report_install(
     body: InstallBody,
@@ -94,7 +86,7 @@ async def report_install(
 ) -> dict:
     """Record install metadata. Idempotent — overwrites prior values."""
     now = datetime.now(timezone.utc)
-    country = _country_from_request(request)
+    country = country_from_request(request)
     stmt = (
         update(User)
         .where(User.id == user.id)
@@ -126,7 +118,7 @@ async def ping(
     session start (locally rate-limited to once per day per install).
     """
     now = datetime.now(timezone.utc)
-    country = _country_from_request(request)
+    country = country_from_request(request)
     stmt = (
         update(User)
         .where(User.id == user.id)
