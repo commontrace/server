@@ -48,6 +48,7 @@ from app.services.retrieval import (
 from app.services.tags import normalize_tag
 from app.services.diversity import apply_diversity_sampling
 from app.services.temperature import get_temperature_multiplier
+from app.config import settings
 
 # Track background tasks to prevent GC before completion
 _background_tasks: set[asyncio.Task] = set()
@@ -214,6 +215,61 @@ def _serialize_trace(trace, *, similarity: float, combined: float) -> TraceSearc
         memory_temperature=trace.memory_temperature,
         valid_from=trace.valid_from, valid_until=trace.valid_until,
     )
+
+
+async def _apply_somatic_floor(
+    db: AsyncSession, results: list[TraceSearchResult], *,
+    searcher_fp: Optional[dict], now_utc: datetime,
+    include_expired: bool, normalized_tags: list[str],
+) -> list[TraceSearchResult]:
+    """Always surface the hardest-won traces, even when cosine ANN missed them.
+
+    Best-effort: any failure logs and returns `results` unchanged. Disabled
+    when retrieval_floor_n <= 0 (no DB access at all — legacy path).
+    """
+    floor_n = settings.retrieval_floor_n
+    if floor_n <= 0:
+        return results
+    try:
+        existing_ids = {r.id for r in results}
+        stmt = (
+            select(Trace)
+            .where(Trace.is_flagged.is_(False))
+            .where(Trace.embedding.is_not(None))
+            .where(Trace.somatic_intensity >= settings.retrieval_somatic_floor)
+            .options(selectinload(Trace.tags))
+            .order_by(Trace.somatic_intensity.desc())
+            .limit(floor_n + len(existing_ids))
+        )
+        if not include_expired:
+            from sqlalchemy import or_
+            stmt = stmt.where(or_(Trace.valid_until.is_(None), Trace.valid_until >= now_utc))
+        if normalized_tags:
+            stmt = (stmt.join(trace_tags, trace_tags.c.trace_id == Trace.id)
+                    .join(Tag, Tag.id == trace_tags.c.tag_id)
+                    .where(Tag.name.in_(normalized_tags))
+                    .group_by(Trace.id)
+                    .having(func.count(func.distinct(Tag.id)) == len(normalized_tags)))
+        result = await db.execute(stmt)
+        candidates = result.scalars().all()
+        min_align = settings.retrieval_floor_min_align
+        added = 0
+        for trace in candidates:
+            if added >= floor_n:
+                break
+            if trace.id in existing_ids:
+                continue
+            if min_align > 0.0 and searcher_fp and trace.context_fingerprint:
+                alignment = compute_context_alignment(searcher_fp, trace.context_fingerprint)
+                if alignment < min_align:
+                    continue
+            results.append(_serialize_trace(trace, similarity=0.0, combined=trace.somatic_intensity))
+            existing_ids.add(trace.id)
+            added += 1
+        return results
+    except Exception:
+        log.warning("somatic_floor_failed", exc_info=True)
+        return results
 
 
 @router.post("/traces/search", response_model=TraceSearchResponse)
