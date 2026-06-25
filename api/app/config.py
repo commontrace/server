@@ -31,5 +31,12 @@ class Settings(BaseSettings):
     # the SAVINGS_PRICE_PER_MTOK env var.
     savings_price_per_mtok: float = 5.0
 
+    # Retrieval somatic-intensity floor — always surface hardest-won traces
+    # even when cosine ANN did not rank them in. RETRIEVAL_FLOOR_N=0 disables
+    # the floor entirely (byte-identical legacy retrieval path).
+    retrieval_somatic_floor: float = 0.75
+    retrieval_floor_n: int = 2
+    retrieval_floor_min_align: float = 0.0
+
 
 settings = Settings()
