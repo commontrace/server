@@ -39,6 +39,25 @@ def test_correct_token_passes(monkeypatch):
     assert verify_admin_token("s3cret") is None
 
 
+def test_non_ascii_token_matches(monkeypatch):
+    """A non-ASCII secret must still match its exact value.
+
+    Regression: hmac.compare_digest raises TypeError on str args with non-ASCII
+    characters, which surfaced as a 500 for every request (even the correct
+    token). We now encode to bytes, so a non-ASCII secret compares cleanly.
+    """
+    monkeypatch.setattr(dependencies.settings, "admin_dashboard_token", "clé-café-☕")
+    assert verify_admin_token("clé-café-☕") is None
+
+
+def test_non_ascii_secret_wrong_token_returns_401(monkeypatch):
+    """Wrong token against a non-ASCII secret is 401, never a 500/TypeError."""
+    monkeypatch.setattr(dependencies.settings, "admin_dashboard_token", "clé-café-☕")
+    with pytest.raises(HTTPException) as exc:
+        verify_admin_token("dummy-wrong")
+    assert exc.value.status_code == 401
+
+
 @pytest.mark.asyncio
 async def test_dependency_form_delegates(monkeypatch):
     """The FastAPI dependency wrapper delegates to verify_admin_token."""

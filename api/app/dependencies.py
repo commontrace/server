@@ -137,8 +137,14 @@ def verify_admin_token(x_admin_token: str | None) -> None:
             status_code=503,
             detail="Admin dashboard disabled. Set ADMIN_DASHBOARD_TOKEN env var.",
         )
+    # Encode both sides to bytes before comparing. hmac.compare_digest raises
+    # TypeError on str args containing non-ASCII characters; a non-ASCII byte in
+    # the configured secret would otherwise surface as a 500 for every request
+    # (including the correct token). Bytes-like args have no ASCII restriction
+    # and keep the constant-time guarantee.
     if not x_admin_token or not hmac.compare_digest(
-        x_admin_token, settings.admin_dashboard_token
+        x_admin_token.encode("utf-8"),
+        settings.admin_dashboard_token.encode("utf-8"),
     ):
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
