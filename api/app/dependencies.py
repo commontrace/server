@@ -132,20 +132,31 @@ def verify_admin_token(x_admin_token: str | None) -> None:
     (feature disabled — defense in depth so a misconfigured deploy cannot leak
     data), 401 if the header is missing or wrong.
     """
-    if not settings.admin_dashboard_token:
+    configured = settings.admin_dashboard_token
+    if not configured:
         raise HTTPException(
             status_code=503,
             detail="Admin dashboard disabled. Set ADMIN_DASHBOARD_TOKEN env var.",
         )
-    # Encode both sides to bytes before comparing. hmac.compare_digest raises
-    # TypeError on str args containing non-ASCII characters; a non-ASCII byte in
-    # the configured secret would otherwise surface as a 500 for every request
-    # (including the correct token). Bytes-like args have no ASCII restriction
-    # and keep the constant-time guarantee.
-    if not x_admin_token or not hmac.compare_digest(
-        x_admin_token.encode("utf-8"),
-        settings.admin_dashboard_token.encode("utf-8"),
-    ):
+    if not x_admin_token:
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+
+    # Accept the secret in two forms so an arbitrary token (any length, any
+    # Unicode) survives HTTP-header transport, whose values must be ASCII:
+    #   * the raw token itself (ASCII tokens, e.g. curl), or
+    #   * the lowercase SHA-256 hex digest of the token (what the browser gate
+    #     sends — a non-ASCII header value cannot be transmitted at all, so the
+    #     raw token never reaches us from a browser).
+    # Compare over bytes: hmac.compare_digest raises TypeError on str args with
+    # non-ASCII characters, which would surface as a 500. Both comparisons run
+    # before the decision to keep timing uniform.
+    configured_bytes = configured.encode("utf-8")
+    raw_ok = hmac.compare_digest(x_admin_token.encode("utf-8"), configured_bytes)
+    configured_hash = hashlib.sha256(configured_bytes).hexdigest().encode("ascii")
+    hash_ok = hmac.compare_digest(
+        x_admin_token.strip().lower().encode("utf-8"), configured_hash
+    )
+    if not raw_ok and not hash_ok:
         raise HTTPException(status_code=401, detail="Invalid admin token")
 
 
