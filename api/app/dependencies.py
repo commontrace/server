@@ -3,7 +3,7 @@ import hmac
 from typing import Annotated
 
 import redis.asyncio as aioredis
-from fastapi import Depends, HTTPException, Request, Security
+from fastapi import Depends, Header, HTTPException, Request, Security
 from fastapi.security import APIKeyHeader
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -122,3 +122,34 @@ async def require_moderator(user: User = Depends(get_current_user)) -> User:
 
 
 RequireModerator = Annotated[User, Depends(require_moderator)]
+
+
+def verify_admin_token(x_admin_token: str | None) -> None:
+    """Constant-time check of the admin dashboard shared secret.
+
+    Single source of truth for owner-only gating, shared by the admin router
+    and the analytics router. Raises 503 if the token env var is unset
+    (feature disabled — defense in depth so a misconfigured deploy cannot leak
+    data), 401 if the header is missing or wrong.
+    """
+    if not settings.admin_dashboard_token:
+        raise HTTPException(
+            status_code=503,
+            detail="Admin dashboard disabled. Set ADMIN_DASHBOARD_TOKEN env var.",
+        )
+    if not x_admin_token or not hmac.compare_digest(
+        x_admin_token, settings.admin_dashboard_token
+    ):
+        raise HTTPException(status_code=401, detail="Invalid admin token")
+
+
+async def require_admin_token(
+    x_admin_token: str | None = Header(default=None),
+) -> None:
+    """FastAPI dependency form — gates a route behind the admin token.
+
+    Apply via ``dependencies=[Depends(require_admin_token)]`` so the route
+    signature is untouched. Aggregate analytics are owner-only, same secret as
+    the admin router.
+    """
+    verify_admin_token(x_admin_token)

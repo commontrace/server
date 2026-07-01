@@ -1,10 +1,15 @@
-"""Analytics router — aggregate-only metrics for the owner dashboard.
+"""Analytics router — aggregate metrics for the owner dashboard.
 
-All endpoints are unauthenticated and return aggregate data only. No PII
-(emails, raw IPs, individual API keys) is surfaced. The dashboard URL is
-unlisted on the public site but anyone with the URL can view the numbers.
+Owner-only: every aggregate endpoint here is gated behind the admin dashboard
+token (``X-Admin-Token``, same secret as the admin router) — no analytics are
+public. Two exceptions:
+  * ``/savings`` stays public — it feeds the homepage collective-impact counter
+    and exposes only a single value-proposition total (no user/traction data).
+  * ``/impact/outbound`` is API-key authenticated and owner-scoped.
 
-Endpoints:
+No PII (emails, raw IPs, individual API keys) is surfaced by any endpoint.
+
+Endpoints (all gated unless noted):
   GET /api/v1/analytics/summary
   GET /api/v1/analytics/timeline?days=30
   GET /api/v1/analytics/top-tags?limit=20
@@ -15,14 +20,16 @@ Endpoints:
   GET /api/v1/analytics/triggers
   GET /api/v1/analytics/topics?limit=20
   GET /api/v1/analytics/assisted-resolution
+  GET /api/v1/analytics/savings           (PUBLIC — homepage counter)
+  GET /api/v1/analytics/impact/outbound   (API-key auth, owner-scoped)
 """
 
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select, text
 
-from app.dependencies import DbSession
+from app.dependencies import DbSession, require_admin_token
 from app.models.amendment import Amendment
 from app.models.retrieval_log import RetrievalLog
 from app.models.trace import Trace
@@ -42,7 +49,7 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
-@router.get("/summary")
+@router.get("/summary", dependencies=[Depends(require_admin_token)])
 async def get_summary(db: DbSession) -> dict:
     """Top-level totals plus 7-day / 30-day deltas."""
     now = _utcnow()
@@ -148,7 +155,7 @@ async def get_summary(db: DbSession) -> dict:
     }
 
 
-@router.get("/timeline")
+@router.get("/timeline", dependencies=[Depends(require_admin_token)])
 async def get_timeline(
     db: DbSession,
     days: int = Query(30, ge=1, le=365),
@@ -198,7 +205,7 @@ async def get_timeline(
     return {"days": days, "series": series}
 
 
-@router.get("/top-tags")
+@router.get("/top-tags", dependencies=[Depends(require_admin_token)])
 async def get_top_tags(
     db: DbSession,
     limit: int = Query(20, ge=1, le=100),
@@ -215,7 +222,7 @@ async def get_top_tags(
     }
 
 
-@router.get("/top-traces")
+@router.get("/top-traces", dependencies=[Depends(require_admin_token)])
 async def get_top_traces(
     db: DbSession,
     limit: int = Query(20, ge=1, le=100),
@@ -247,7 +254,7 @@ async def get_top_traces(
     }
 
 
-@router.get("/top-contributors")
+@router.get("/top-contributors", dependencies=[Depends(require_admin_token)])
 async def get_top_contributors(
     db: DbSession,
     limit: int = Query(20, ge=1, le=100),
@@ -275,7 +282,7 @@ async def get_top_contributors(
     }
 
 
-@router.get("/geo")
+@router.get("/geo", dependencies=[Depends(require_admin_token)])
 async def get_geo(db: DbSession) -> dict:
     """Country-level distribution of users. NULL == unknown."""
     sql = text(
@@ -289,7 +296,7 @@ async def get_geo(db: DbSession) -> dict:
     }
 
 
-@router.get("/platforms")
+@router.get("/platforms", dependencies=[Depends(require_admin_token)])
 async def get_platforms(db: DbSession) -> dict:
     """Breakdown by platform + skill_version."""
     sql_p = text(
@@ -314,7 +321,7 @@ async def get_platforms(db: DbSession) -> dict:
     }
 
 
-@router.get("/triggers")
+@router.get("/triggers", dependencies=[Depends(require_admin_token)])
 async def get_triggers(db: DbSession) -> dict:
     """Aggregate trigger effectiveness across all reported skill sessions."""
     sql = text(
@@ -354,7 +361,7 @@ async def get_triggers(db: DbSession) -> dict:
     return {"sessions_reported": sessions, "triggers": triggers}
 
 
-@router.get("/topics")
+@router.get("/topics", dependencies=[Depends(require_admin_token)])
 async def get_topics(db: DbSession, limit: int = Query(20, ge=1, le=50)) -> dict:
     """Ambient presence: per-tag activity counters, trailing 7 days (spec §4.4).
 
@@ -395,7 +402,7 @@ async def get_topics(db: DbSession, limit: int = Query(20, ge=1, le=50)) -> dict
     return {"window_days": 7, "topics": topics[:limit]}
 
 
-@router.get("/assisted-resolution")
+@router.get("/assisted-resolution", dependencies=[Depends(require_admin_token)])
 async def get_assisted_resolution(
     db: DbSession,
     days: int = Query(30, ge=1, le=365),

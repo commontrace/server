@@ -20,15 +20,13 @@ Endpoints:
   DELETE /api/v1/admin/users/{user_id}
 """
 
-import hmac
 import uuid
 
 from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 from sqlalchemy import text
 
-from app.config import settings
-from app.dependencies import DbSession, hash_api_key
+from app.dependencies import DbSession, hash_api_key, verify_admin_token
 from app.routers.invitations import generate_invite_code
 from app.services.pattern_synthesis import SYSTEM_USER_ID
 
@@ -36,15 +34,8 @@ router = APIRouter(prefix="/api/v1/admin", tags=["admin"])
 
 
 def _check_token(x_admin_token: str | None) -> None:
-    if not settings.admin_dashboard_token:
-        raise HTTPException(
-            status_code=503,
-            detail="Admin dashboard disabled. Set ADMIN_DASHBOARD_TOKEN env var.",
-        )
-    if not x_admin_token or not hmac.compare_digest(
-        x_admin_token, settings.admin_dashboard_token
-    ):
-        raise HTTPException(status_code=401, detail="Invalid admin token")
+    """Delegate to the shared owner-token check (single source of truth)."""
+    verify_admin_token(x_admin_token)
 
 
 class AdminInvitationMint(BaseModel):
