@@ -7,6 +7,8 @@ database dependency.
 
 from app.services.health import (
     cluster_pairs,
+    completeness,
+    divergence_summary,
     health_score,
     text_staleness_reasons,
 )
@@ -46,9 +48,53 @@ class TestTextStaleness:
         # "as of 2026" is not behind the dated-year ceiling.
         assert text_staleness_reasons("pricing as of 2026", "") == []
 
-    def test_deprecation_language_flagged(self):
-        reasons = text_staleness_reasons("", "orm_mode is deprecated in v2")
-        assert any("deprecation" in r for r in reasons)
+    def test_asof_with_month_flagged(self):
+        # Sentinel's regex tolerates an intervening month token.
+        reasons = text_staleness_reasons("", "quota as of June 2023 was 500 RPM")
+        assert any("dated data" in r for r in reasons)
+
+    def test_outdated_version_pin_flagged(self):
+        # Explicit operator + below current major (pydantic v2) => stale.
+        reasons = text_staleness_reasons("", "requires pydantic==1.8 for this")
+        assert any("outdated version pin" in r for r in reasons)
+
+    def test_current_major_pin_not_flagged(self):
+        # Pinning to the current major is normal, not rot.
+        assert text_staleness_reasons("", "use sqlalchemy==2.0") == []
+
+    def test_bare_version_mention_not_flagged(self):
+        # No operator => comparative prose, not a dependency pin (no FP).
+        assert text_staleness_reasons("migrating from Pydantic v1 to v2", "") == []
+
+    def test_deprecation_language_not_flagged(self):
+        # Deprecation wording describes the topic, not age — deliberately no FP.
+        assert text_staleness_reasons("", "orm_mode is deprecated in v2") == []
+
+
+class TestCompleteness:
+    def test_richer_trace_scores_higher(self):
+        rich = completeness("x" * 1500, has_code=True, tag_count=5)
+        poor = completeness("short", has_code=False, tag_count=0)
+        assert rich > poor
+        assert rich == 3.0  # 1.0 length + 1.0 code + 1.0 tags, all capped
+
+    def test_code_block_beats_no_code_all_else_equal(self):
+        with_code = completeness("same length text", has_code=True, tag_count=1)
+        without = completeness("same length text", has_code=False, tag_count=1)
+        assert with_code == without + 1.0
+
+
+class TestDivergenceSummary:
+    def test_distinct_approaches_contrast(self):
+        summary = divergence_summary(
+            "use redis lock acquire redis redis", "use postgres advisory_lock postgres"
+        )
+        assert "A favors" in summary and "B favors" in summary
+        assert "redis" in summary and "postgres" in summary
+
+    def test_shared_vocabulary_falls_back(self):
+        summary = divergence_summary("identical tokens here", "identical tokens here")
+        assert "review manually" in summary
 
 
 class TestHealthScore:

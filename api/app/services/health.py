@@ -18,12 +18,14 @@ writes, no schema changes — a pure additive view over what already exists.
 """
 
 import re
-from collections import defaultdict
+import uuid
+from collections import Counter, defaultdict
 
 from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.consolidation_run import ConsolidationRun
+from app.models.tag import trace_tags
 from app.models.trace import Trace
 from app.models.trace_relationship import TraceRelationship
 
@@ -43,13 +45,33 @@ _TEMP_ORDER = ["HOT", "WARM", "COOL", "COLD", "FROZEN"]
 
 # Cheap, network-free staleness signals over trace text (the sleep cycle's
 # PyPI check needs the network; this is a fast heuristic for the dashboard).
-_ASOF = re.compile(r"\bas of (\d{4})\b", re.I)
-_DATED_YEAR_CEILING = 2024  # "as of <= this year" reads as potentially dated
-_DEPRECATION = re.compile(
-    r"\b(deprecated|no longer works?|no longer supported|"
-    r"removed in|breaking change|used to work)\b",
-    re.I,
-)
+# Calibrated to Sentinel's staleness_of: fire only on genuine *age* signals,
+# never on subject matter. Deprecation / "no longer works" language was tried
+# and dropped — on the curated corpus it flagged the topic ("the old pattern is
+# deprecated, use X" is the *current* advice), producing only false positives.
+
+# Known-current MAJOR version per fast-moving lib. A version pin signals age only
+# when it sits BELOW the current major; pinning to the current major is normal.
+CURRENT_MAJOR = {
+    "pydantic": 2, "fastapi": 0, "react": 18, "next": 14, "nextjs": 14,
+    "langchain": 0, "sqlalchemy": 2, "vue": 3, "angular": 17, "tailwind": 3,
+    "django": 5, "numpy": 2, "pandas": 2, "torch": 2, "tensorflow": 2,
+}
+# A genuine pin needs an explicit operator (pydantic==1.8); bare prose like
+# "Pydantic v1" is a comparative mention, not a dependency pin.
+_VERSION_PIN = re.compile(r"\b([a-zA-Z][\w\-]+)\s*(==|>=|~=)\s*v?(\d+)(?:\.\d+)*")
+# Figures stamped "as of <year>" (rate limits, pricing, quotas) drift with time.
+_ASOF = re.compile(r"\bas of\s+(?:\w+\s+)?(20\d\d)\b", re.IGNORECASE)
+_STALE_YEAR_CUTOFF = 2024  # current_year - 2
+
+# Tokenisation for plain-English conflict divergence summaries (Sentinel's
+# _divergence_summary): dominant API/library-ish tokens per solution.
+_WORD = re.compile(r"[a-zA-Z_][a-zA-Z0-9_\.]{2,}")
+_STOP = {
+    "the", "and", "for", "with", "you", "use", "using", "this", "that", "from",
+    "your", "can", "are", "not", "but", "will", "have", "has", "into", "via",
+    "when", "what", "how", "why", "should", "would", "could", "code",
+}
 
 
 # ---------------------------------------------------------------------------
@@ -88,18 +110,29 @@ def cluster_pairs(pairs: list[tuple[str, str]]) -> list[list[str]]:
 
 
 def text_staleness_reasons(context: str, solution: str) -> list[str]:
-    """Network-free staleness signals for a trace's text. Empty list = fine."""
+    """Network-free staleness signals for a trace's text. Empty list = fine.
+
+    Ports Sentinel's calibrated ``staleness_of``: two signals that indicate
+    genuine *age*, not subject matter — an outdated dependency pin (explicit
+    operator, below the current major) and a dated "as of <year>" data stamp.
+    Deprecation language is intentionally NOT a signal (see module header).
+    """
     blob = f"{context or ''}\n{solution or ''}"
     reasons: list[str] = []
-    for year in _ASOF.findall(blob):
-        try:
-            if int(year) <= _DATED_YEAR_CEILING:
-                reasons.append(f"dated data (“as of {year}”)")
-                break
-        except ValueError:
-            pass
-    if _DEPRECATION.search(blob):
-        reasons.append("mentions deprecation / breaking change")
+    # 1. Outdated dependency pin: explicit operator + below the current major.
+    for m in _VERSION_PIN.finditer(blob):
+        lib, op, ver = m.group(1), m.group(2), m.group(3)
+        cur = CURRENT_MAJOR.get(lib.lower())
+        if cur is not None and int(ver) < cur:
+            reasons.append(
+                f"outdated version pin: {lib}{op}{ver} (current major v{cur})"
+            )
+            break
+    # 2. Dated external data that decays.
+    for m in _ASOF.finditer(blob):
+        if int(m.group(1)) <= _STALE_YEAR_CUTOFF:
+            reasons.append(f"references dated data (“as of {m.group(1)}”)")
+            break
     return reasons
 
 
@@ -124,6 +157,45 @@ def health_score(
     return max(0, min(100, round(score)))
 
 
+def completeness(solution: str, has_code: bool, tag_count: int) -> float:
+    """Heuristic completeness for a trace (ported from Sentinel's dedup).
+
+    Longer solution + fenced code + more tags = more complete. Used to pick the
+    canonical "keeper" of a duplicate cluster — the richest member survives.
+    """
+    score = 0.0
+    score += min(len(solution or ""), 1500) / 1500.0
+    score += 1.0 if has_code else 0.0
+    score += min(tag_count, 5) / 5.0
+    return score
+
+
+def _approach_tokens(solution: str, k: int = 6) -> list[str]:
+    """Dominant API/library-ish tokens in a solution (for legible divergence)."""
+    words = [w.lower() for w in _WORD.findall(solution or "")]
+    words = [w for w in words if w not in _STOP and not w.isdigit()]
+    return [w for w, _ in Counter(words).most_common(k)]
+
+
+def divergence_summary(sol_a: str, sol_b: str) -> str:
+    """Plain-English "A favors X; B favors Y" for a conflicting pair.
+
+    Ported from Sentinel's ``_divergence_summary``: contrast the dominant tokens
+    of each solution so the owner sees *how* two same-problem fixes diverge
+    without reading both in full.
+    """
+    ta, tb = _approach_tokens(sol_a), _approach_tokens(sol_b)
+    only_a = [w for w in ta if w not in tb][:3]
+    only_b = [w for w in tb if w not in ta][:3]
+    if only_a and only_b:
+        return f"A favors {', '.join(only_a)}; B favors {', '.join(only_b)}"
+    if only_a:
+        return f"A introduces {', '.join(only_a)}; B does not"
+    if only_b:
+        return f"B introduces {', '.join(only_b)}; A does not"
+    return "Solutions diverge but share vocabulary; review manually"
+
+
 # ---------------------------------------------------------------------------
 # DB-backed aggregation
 # ---------------------------------------------------------------------------
@@ -131,6 +203,34 @@ async def _distribution(db: AsyncSession, column) -> dict[str, int]:
     result = await db.execute(select(column, func.count()).group_by(column))
     return {str(row[0]) if row[0] is not None else "UNCLASSIFIED": int(row[1])
             for row in result.all()}
+
+
+async def _solutions_map(db: AsyncSession, ids: set[str]) -> dict[str, str]:
+    """Solution text for a set of trace ids, in one bulk query (no N+1)."""
+    if not ids:
+        return {}
+    rows = await db.execute(
+        select(Trace.id, Trace.solution_text)
+        .where(Trace.id.in_([uuid.UUID(i) for i in ids]))
+    )
+    return {str(tid): (sol or "") for tid, sol in rows.all()}
+
+
+async def _completeness_map(db: AsyncSession, ids: set[str]) -> dict[str, float]:
+    """completeness() per trace id (solution length + fenced code + tag count)."""
+    if not ids:
+        return {}
+    sols = await _solutions_map(db, ids)
+    tag_rows = await db.execute(
+        select(trace_tags.c.trace_id, func.count())
+        .where(trace_tags.c.trace_id.in_([uuid.UUID(i) for i in ids]))
+        .group_by(trace_tags.c.trace_id)
+    )
+    tag_counts = {str(tid): int(c) for tid, c in tag_rows.all()}
+    return {
+        tid: completeness(sol, "```" in sol, tag_counts.get(tid, 0))
+        for tid, sol in sols.items()
+    }
 
 
 async def _duplicate_clusters(db: AsyncSession, titles: dict[str, str]) -> list[dict]:
@@ -157,8 +257,12 @@ async def _duplicate_clusters(db: AsyncSession, titles: dict[str, str]) -> list[
         edges.append((a, b))
         closest[frozenset((a, b))] = float(row.dist)
 
+    raw_clusters = cluster_pairs(edges)[:MAX_CLUSTERS]
+    # Canonical "keeper" per cluster = most complete member (one bulk lookup).
+    member_ids = {m for members in raw_clusters for m in members}
+    comp = await _completeness_map(db, member_ids)
     clusters = []
-    for members in cluster_pairs(edges)[:MAX_CLUSTERS]:
+    for members in raw_clusters:
         # Tightest similarity inside this cluster, for a headline number.
         best = min(
             (closest[frozenset((x, y))]
@@ -167,10 +271,13 @@ async def _duplicate_clusters(db: AsyncSession, titles: dict[str, str]) -> list[
              if frozenset((x, y)) in closest),
             default=DUP_DISTANCE,
         )
+        canonical = max(members, key=lambda m: comp.get(m, 0.0))
         clusters.append({
             "size": len(members),
             "max_similarity": round(1.0 - best, 4),
-            "traces": [{"id": m, "title": titles.get(m, "—")} for m in members],
+            "canonical_id": canonical,
+            "traces": [{"id": m, "title": titles.get(m, "—"),
+                        "canonical": m == canonical} for m in members],
         })
     return clusters
 
@@ -206,8 +313,12 @@ async def _conflict_pairs(db: AsyncSession, titles: dict[str, str]) -> list[dict
             "lim": MAX_PAIRS,
         },
     )
+    rows = result.all()
+    # Solution text for every involved trace, one bulk query, for divergence.
+    ids = {str(r.a_id) for r in rows} | {str(r.b_id) for r in rows}
+    sols = await _solutions_map(db, ids)
     pairs = []
-    for row in result.all():
+    for row in rows:
         a, b = str(row.a_id), str(row.b_id)
         pairs.append({
             "a": {"id": a, "title": titles.get(a, "—"),
@@ -216,6 +327,7 @@ async def _conflict_pairs(db: AsyncSession, titles: dict[str, str]) -> list[dict
                   "trust": round(float(row.trust_b), 2)},
             "problem_similarity": round(1.0 - float(row.ctx_dist), 4),
             "solution_similarity": round(1.0 - float(row.sol_dist), 4),
+            "divergence": divergence_summary(sols.get(a, ""), sols.get(b, "")),
         })
     return pairs
 
