@@ -20,6 +20,7 @@ Endpoints (all gated unless noted):
   GET /api/v1/analytics/triggers
   GET /api/v1/analytics/topics?limit=20
   GET /api/v1/analytics/assisted-resolution
+  GET /api/v1/analytics/knowledge-health
   GET /api/v1/analytics/savings           (PUBLIC — homepage counter)
   GET /api/v1/analytics/impact/outbound   (API-key auth, owner-scoped)
 """
@@ -39,6 +40,7 @@ from app.models.savings_ledger import SavingsLedger
 from app.dependencies import CurrentUser
 from app.middleware.rate_limiter import ReadRateLimit
 from app.schemas.savings import OutboundImpactResponse
+from app.services.health import compute_knowledge_health
 from app.services.outbound_impact import compute_outbound_impact
 from app.config import settings
 
@@ -153,6 +155,18 @@ async def get_summary(db: DbSession) -> dict:
             "retrievals_7d": retrievals_7d,
         },
     }
+
+
+@router.get("/knowledge-health", dependencies=[Depends(require_admin_token)])
+async def get_knowledge_health(db: DbSession) -> dict:
+    """Knowledge-base self-maintenance signals for the owner dashboard.
+
+    Combines the sleep cycle's stored signals (trust, temperature, convergence,
+    relationships) with an on-demand early-warning pass that finds conflicts and
+    near-duplicates at any scale — before the background worker's GROWING-tier
+    gate would. Read-only.
+    """
+    return await compute_knowledge_health(db)
 
 
 @router.get("/timeline", dependencies=[Depends(require_admin_token)])
